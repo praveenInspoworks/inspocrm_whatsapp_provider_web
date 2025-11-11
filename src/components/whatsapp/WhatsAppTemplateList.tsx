@@ -39,26 +39,27 @@ interface Contact {
 }
 
 interface WhatsAppTemplate {
-  id: number;
+  id: number | null;
   templateName: string;
-  templateType: 'MARKETING' | 'UTILITY' | 'AUTHENTICATION';
-  languageCode: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ACTIVE';
-  headerType: 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT' | 'NONE';
-  headerText?: string;
-  headerMediaUrl?: string;
-  messageContent: string;
-  footerText?: string;
-  buttons: Array<{
+  templateId: string;
+  language: string;
+  category: string;
+  status: string;
+  headerType: string | null;
+  headerText: string | null;
+  bodyText: string;
+  components: Array<{
     type: string;
+    subtype: string | null;
     text: string;
-    url?: string;
-    phoneNumber?: string;
+    parameters?: any;
+    url?: string | null;
+    phoneNumber?: string | null;
   }>;
+  qualityRating: any;
   createdAt: string;
   updatedAt: string;
-  businessAccountId: number;
-  businessAccountName?: string;
+  isActive: boolean;
 }
 
 export function WhatsAppTemplateList() {
@@ -107,7 +108,7 @@ export function WhatsAppTemplateList() {
     if (searchTerm) {
       filtered = filtered.filter(template =>
         template.templateName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        template.messageContent.toLowerCase().includes(searchTerm.toLowerCase())
+        template.bodyText.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -118,7 +119,7 @@ export function WhatsAppTemplateList() {
 
     // Type filter
     if (typeFilter !== 'ALL') {
-      filtered = filtered.filter(template => template.templateType === typeFilter);
+      filtered = filtered.filter(template => template.category === typeFilter);
     }
 
     setFilteredTemplates(filtered);
@@ -144,10 +145,9 @@ export function WhatsAppTemplateList() {
       // Prepare campaign data
       const campaignData = {
         campaignName: `${selectedTemplate.templateName} Campaign`,
-        templateId: selectedTemplate.id.toString(),
+        templateId: selectedTemplate.templateId,
         recipientPhoneNumbers: selectedContacts.map(c => c.phone).filter(Boolean),
-        templateVariables: {}, // Add variable replacement logic if needed
-        businessAccountId: selectedTemplate.businessAccountId
+        templateVariables: {} // Add variable replacement logic if needed
       };
 
       // For Twilio templates, use the specific ContentSid
@@ -188,6 +188,8 @@ export function WhatsAppTemplateList() {
         return <Badge className="bg-blue-500 hover:bg-blue-600">Approved</Badge>;
       case 'PENDING':
         return <Badge variant="secondary" className="bg-yellow-500 hover:bg-yellow-600 text-white">Pending</Badge>;
+      case 'DRAFT':
+        return <Badge variant="outline" className="bg-gray-500 hover:bg-gray-600 text-white">Draft</Badge>;
       case 'REJECTED':
         return <Badge variant="destructive">Rejected</Badge>;
       default:
@@ -278,6 +280,7 @@ export function WhatsAppTemplateList() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">All Status</SelectItem>
+                  <SelectItem value="DRAFT">Draft</SelectItem>
                   <SelectItem value="ACTIVE">Active</SelectItem>
                   <SelectItem value="APPROVED">Approved</SelectItem>
                   <SelectItem value="PENDING">Pending</SelectItem>
@@ -329,106 +332,149 @@ export function WhatsAppTemplateList() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredTemplates.map((template) => (
-              <Card key={template.id} className="border-0 shadow-lg bg-white/90 backdrop-blur-sm rounded-2xl hover:shadow-xl transition-all duration-300 group">
-                <CardHeader className="pb-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
-                        <MessageSquare className="w-5 h-5 text-white" />
+            {filteredTemplates.map((template) => {
+              // Extract buttons from components
+              const buttons = template.components?.filter(comp => comp.type === 'BUTTONS') || [];
+              // Extract footer from components
+              const footer = template.components?.find(comp => comp.type === 'FOOTER');
+
+              return (
+                <Card key={template.id || template.templateId} className="border-0 shadow-lg bg-white/90 backdrop-blur-sm rounded-2xl hover:shadow-xl transition-all duration-300 group">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
+                          <MessageSquare className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg font-bold text-gray-900 group-hover:text-green-700 transition-colors">
+                            {template.templateName}
+                          </CardTitle>
+                          <p className="text-sm text-gray-600 font-medium">
+                            Template ID: {template.templateId}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <CardTitle className="text-lg font-bold text-gray-900 group-hover:text-green-700 transition-colors">
-                          {template.templateName}
-                        </CardTitle>
-                        <p className="text-sm text-gray-600 font-medium">
-                          {template.businessAccountName || 'Business Account'}
-                        </p>
-                      </div>
+                      {getStatusBadge(template.status)}
                     </div>
-                    {getStatusBadge(template.status)}
-                  </div>
 
-                  <div className="flex items-center gap-2 mb-3">
-                    {getTypeBadge(template.templateType)}
-                    <Badge variant="outline" className="text-xs">
-                      {template.languageCode.toUpperCase()}
-                    </Badge>
-                  </div>
+                    <div className="flex items-center gap-2 mb-3">
+                      {getTypeBadge(template.category)}
+                      <Badge variant="outline" className="text-xs">
+                        {(template.language || 'en').toUpperCase()}
+                      </Badge>
+                    </div>
 
-                  {/* Message Preview */}
-                  <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                    <p className="text-sm text-gray-700 line-clamp-3 leading-relaxed">
-                      {template.messageContent.length > 100
-                        ? `${template.messageContent.substring(0, 100)}...`
-                        : template.messageContent}
-                    </p>
-                    {template.buttons && template.buttons.length > 0 && (
-                      <div className="mt-3 flex flex-wrap gap-1">
-                        {template.buttons.slice(0, 2).map((button, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs bg-green-50 text-green-700">
-                            {button.text}
-                          </Badge>
-                        ))}
-                        {template.buttons.length > 2 && (
-                          <Badge variant="secondary" className="text-xs bg-gray-50 text-gray-600">
-                            +{template.buttons.length - 2} more
-                          </Badge>
-                        )}
-                      </div>
+                    {/* Message Preview */}
+                    <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                      <p className="text-sm text-gray-700 line-clamp-3 leading-relaxed">
+                        {template.bodyText.length > 100
+                          ? `${template.bodyText.substring(0, 100)}...`
+                          : template.bodyText}
+                      </p>
+                      {footer && (
+                        <p className="text-xs text-gray-500 mt-2 italic">
+                          {footer.text}
+                        </p>
+                      )}
+                      {buttons && buttons.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-1">
+                          {buttons.slice(0, 2).map((button, index) => (
+                            <Badge key={index} variant="secondary" className="text-xs bg-green-50 text-green-700">
+                              {button.text || 'Button'}
+                            </Badge>
+                          ))}
+                          {buttons.length > 2 && (
+                            <Badge variant="secondary" className="text-xs bg-gray-50 text-gray-600">
+                              +{buttons.length - 2} more
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="pt-0">
+                    <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        {formatDate(template.createdAt)}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <User className="w-3 h-3" />
+                        Updated {formatDate(template.updatedAt)}
+                      </span>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                      {template.status === 'DRAFT' ? (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              // TODO: Implement edit functionality - navigate to template creator with draft data
+                              toast({
+                                title: "Edit Template",
+                                description: "Edit functionality will be implemented soon.",
+                              });
+                            }}
+                            className="flex-1 bg-orange-50 hover:bg-orange-100 border-orange-200 hover:border-orange-300 text-orange-700"
+                          >
+                            <Edit className="w-4 h-4 mr-2" />
+                            Edit
+                          </Button>
+
+                          <Button
+                            onClick={() => handleSendMessage(template)}
+                            disabled={!['ACTIVE', 'APPROVED', 'DRAFT'].includes(template.status)}
+                            className="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Send className="w-4 h-4 mr-2" />
+                            Send
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedTemplate(template);
+                              setShowPreview(true);
+                            }}
+                            className="flex-1 bg-blue-50 hover:bg-blue-100 border-blue-200 hover:border-blue-300 text-blue-700"
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            Preview
+                          </Button>
+
+                          <Button
+                            onClick={() => handleSendMessage(template)}
+                            disabled={template.status !== 'ACTIVE' && template.status !== 'APPROVED'}
+                            className="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Send className="w-4 h-4 mr-2" />
+                            Send
+                          </Button>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Status Warning */}
+                    {template.status !== 'ACTIVE' && template.status !== 'APPROVED' && (
+                      <Alert className="mt-3 border-yellow-200 bg-yellow-50">
+                        <AlertCircle className="h-4 w-4 text-yellow-600" />
+                        <AlertDescription className="text-yellow-800 text-xs">
+                          Template must be approved before sending messages.
+                        </AlertDescription>
+                      </Alert>
                     )}
-                  </div>
-                </CardHeader>
-
-                <CardContent className="pt-0">
-                  <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
-                      {formatDate(template.createdAt)}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <User className="w-3 h-3" />
-                      Updated {formatDate(template.updatedAt)}
-                    </span>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedTemplate(template);
-                        setShowPreview(true);
-                      }}
-                      className="flex-1 bg-blue-50 hover:bg-blue-100 border-blue-200 hover:border-blue-300 text-blue-700"
-                    >
-                      <Eye className="w-4 h-4 mr-2" />
-                      Preview
-                    </Button>
-
-                    <Button
-                      onClick={() => handleSendMessage(template)}
-                      disabled={template.status !== 'ACTIVE' && template.status !== 'APPROVED'}
-                      className="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Send className="w-4 h-4 mr-2" />
-                      Send
-                    </Button>
-                  </div>
-
-                  {/* Status Warning */}
-                  {template.status !== 'ACTIVE' && template.status !== 'APPROVED' && (
-                    <Alert className="mt-3 border-yellow-200 bg-yellow-50">
-                      <AlertCircle className="h-4 w-4 text-yellow-600" />
-                      <AlertDescription className="text-yellow-800 text-xs">
-                        Template must be approved before sending messages.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
@@ -484,48 +530,54 @@ export function WhatsAppTemplateList() {
           <DialogHeader>
             <DialogTitle>Template Preview</DialogTitle>
           </DialogHeader>
-          {selectedTemplate && (
-            <div className="space-y-4">
-              <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                <h4 className="font-semibold text-gray-900 mb-2">{selectedTemplate.templateName}</h4>
-                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                  {selectedTemplate.messageContent}
-                </p>
-                {selectedTemplate.footerText && (
-                  <p className="text-xs text-gray-500 mt-2 italic">
-                    {selectedTemplate.footerText}
+          {selectedTemplate && (() => {
+            // Extract buttons and footer from components
+            const buttons = selectedTemplate.components?.filter(comp => comp.type === 'BUTTONS') || [];
+            const footer = selectedTemplate.components?.find(comp => comp.type === 'FOOTER');
+
+            return (
+              <div className="space-y-4">
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                  <h4 className="font-semibold text-gray-900 mb-2">{selectedTemplate.templateName}</h4>
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                    {selectedTemplate.bodyText}
                   </p>
-                )}
-                {selectedTemplate.buttons && selectedTemplate.buttons.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    {selectedTemplate.buttons.map((button, index) => (
-                      <button
-                        key={index}
-                        className="w-full text-left px-3 py-2 bg-green-50 hover:bg-green-100 rounded-lg border border-green-200 text-sm text-green-800 transition-colors"
-                      >
-                        {button.text}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                  {footer && (
+                    <p className="text-xs text-gray-500 mt-2 italic">
+                      {footer.text}
+                    </p>
+                  )}
+                  {buttons && buttons.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {buttons.map((button, index) => (
+                        <button
+                          key={index}
+                          className="w-full text-left px-3 py-2 bg-green-50 hover:bg-green-100 rounded-lg border border-green-200 text-sm text-green-800 transition-colors"
+                        >
+                          {button.text || 'Button'}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setShowPreview(false)}>
+                    Close
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowPreview(false);
+                      handleSendMessage(selectedTemplate);
+                    }}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <Send className="w-4 h-4 mr-2" />
+                    Send Message
+                  </Button>
+                </div>
               </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowPreview(false)}>
-                  Close
-                </Button>
-                <Button
-                  onClick={() => {
-                    setShowPreview(false);
-                    handleSendMessage(selectedTemplate);
-                  }}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <Send className="w-4 h-4 mr-2" />
-                  Send Message
-                </Button>
-              </div>
-            </div>
-          )}
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>

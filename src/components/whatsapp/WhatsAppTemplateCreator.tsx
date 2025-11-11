@@ -16,7 +16,7 @@ import {
   Smartphone, Monitor, ZoomIn, ZoomOut, RotateCcw,
   Phone, Building, User, Save, Play, ArrowLeft, ArrowRight,
   Link, Copy, Sparkles, Bold, Italic, Underline, Palette,
-  Type, AlignLeft, AlignCenter, AlignRight, X
+  Type, AlignLeft, AlignCenter, AlignRight, X, Clock, Calendar
 } from 'lucide-react';
 import { ContactSelector } from '../crm/ContactSelector';
 import { WhatsAppBusinessSetup } from './WhatsAppBusinessSetup';
@@ -81,9 +81,17 @@ export default function WhatsAppTemplateCreator() {
   const [isLoading, setIsLoading] = useState(false);
   const [showBusinessSetup, setShowBusinessSetup] = useState(false);
   const [showContactSelector, setShowContactSelector] = useState(false);
+  const [showSchedulingDialog, setShowSchedulingDialog] = useState(false);
   const [selectedFontSize, setSelectedFontSize] = useState('14');
   const [selectedFontFamily, setSelectedFontFamily] = useState('normal');
   const messageBodyRef = useRef<HTMLTextAreaElement>(null);
+
+  // Scheduling state
+  const [sendType, setSendType] = useState<'immediate' | 'scheduled'>('immediate');
+  const [scheduledDate, setScheduledDate] = useState('');
+  const [scheduledTime, setScheduledTime] = useState('');
+  const [recurrenceType, setRecurrenceType] = useState<'none' | 'daily' | 'weekly' | 'monthly'>('none');
+  const [recurrenceInterval, setRecurrenceInterval] = useState(1);
 
   const [formData, setFormData] = useState<TemplateFormData>({
     businessAccountId: null,
@@ -339,7 +347,7 @@ export default function WhatsAppTemplateCreator() {
     }
   };
 
-  const createTemplate = async () => {
+  const createTemplate = async (saveAsDraft = false) => {
     const errors = validateTemplate();
     if (errors.length > 0) {
       toast({
@@ -416,14 +424,34 @@ export default function WhatsAppTemplateCreator() {
         templateName: formData.templateName,
         templateType: formData.templateType,
         languageCode: formData.languageCode,
-        components: components
+        components: components,
+        status: saveAsDraft ? 'DRAFT' : 'PENDING' // Save as draft or submit for approval
       };
 
       await post('/api/v1/whatsapp/templates', templateData);
       toast({
-        title: "Template created successfully",
-        description: "Your template has been submitted for approval."
+        title: saveAsDraft ? "Template saved as draft" : "Template created successfully",
+        description: saveAsDraft
+          ? "Your template has been saved as draft. You can edit it later."
+          : "Your template has been submitted for approval."
       });
+
+      // Reset form after saving
+      if (saveAsDraft) {
+        setFormData({
+          businessAccountId: formData.businessAccountId, // Keep account selected
+          templateName: '',
+          templateType: 'MARKETING',
+          languageCode: 'en',
+          headerType: 'NONE',
+          headerText: '',
+          headerMediaUrl: '',
+          headerMediaFile: null,
+          messageBody: '',
+          footerText: '',
+          buttons: []
+        });
+      }
     } catch (error: any) {
       console.error('Create template error:', error);
       toast({
@@ -436,6 +464,119 @@ export default function WhatsAppTemplateCreator() {
     }
   };
 
+  const validateBusinessAccount = async () => {
+    if (!formData.businessAccountId) {
+      return {
+        valid: false,
+        title: "Business account required",
+        message: "Please select a WhatsApp business account first."
+      };
+    }
+
+    try {
+      // Get detailed business account information
+      const accountDetails = await get(`/api/v1/whatsapp/accounts/${formData.businessAccountId}`);
+
+      // Validate account status
+      if (!accountDetails.isActive) {
+        return {
+          valid: false,
+          title: "Account Inactive",
+          message: "The selected WhatsApp business account is not active. Please activate it first."
+        };
+      }
+
+      // Validate account status
+      if (accountDetails.status !== 'ACTIVE' && accountDetails.status !== 'VERIFIED') {
+        return {
+          valid: false,
+          title: "Account Not Verified",
+          message: `The selected WhatsApp business account is ${accountDetails.status.toLowerCase()}. Please verify your account before sending messages.`
+        };
+      }
+
+      // Validate required credentials based on provider
+      const provider = accountDetails.provider || detectProviderFromCredentials(accountDetails);
+      const missingCredentials = [];
+
+      switch (provider) {
+        case 'META':
+          if (!accountDetails.accessToken || accountDetails.accessToken.length < 10) {
+            missingCredentials.push("Access Token");
+          }
+          if (!accountDetails.phoneNumberId) {
+            missingCredentials.push("Phone Number ID");
+          }
+          break;
+        case 'TWILIO':
+          if (!accountDetails.accountSid || !accountDetails.accountSid.startsWith('AC')) {
+            missingCredentials.push("Account SID");
+          }
+          if (!accountDetails.accessToken) {
+            missingCredentials.push("Auth Token");
+          }
+          break;
+        case '360DIALOG':
+          if (!accountDetails.apiKey) {
+            missingCredentials.push("API Key");
+          }
+          if (!accountDetails.phoneNumberId) {
+            missingCredentials.push("Phone Number ID");
+          }
+          break;
+        case 'GUPSHUP':
+          if (!accountDetails.apiKey) {
+            missingCredentials.push("API Key");
+          }
+          if (!accountDetails.appId) {
+            missingCredentials.push("App ID");
+          }
+          break;
+        default:
+          if (!accountDetails.accessToken && !accountDetails.apiKey) {
+            missingCredentials.push("API Credentials");
+          }
+      }
+
+      if (missingCredentials.length > 0) {
+        return {
+          valid: false,
+          title: "Missing Credentials",
+          message: `The selected account is missing required credentials: ${missingCredentials.join(', ')}. Please update your account settings.`
+        };
+      }
+
+      // Check rate limits if available
+      if (accountDetails.dailyMessageLimit && accountDetails.messagesRemaining !== undefined) {
+        if (accountDetails.messagesRemaining <= 0) {
+          return {
+            valid: false,
+            title: "Rate Limit Exceeded",
+            message: "You have reached your daily message limit. Please try again tomorrow or upgrade your plan."
+          };
+        }
+      }
+
+      return { valid: true, account: accountDetails };
+
+    } catch (error) {
+      console.error('Business account validation error:', error);
+      return {
+        valid: false,
+        title: "Account Validation Failed",
+        message: "Unable to validate the selected business account. Please try again or contact support."
+      };
+    }
+  };
+
+  const detectProviderFromCredentials = (account: any) => {
+    if (account.accountSid?.startsWith('AC')) return 'TWILIO';
+    if (account.accessToken?.startsWith('EAA')) return 'META';
+    if (account.accessToken?.startsWith('D360')) return '360DIALOG';
+    if (account.appId) return 'GUPSHUP';
+    return 'META'; // Default
+  };
+
   const sendMessages = async () => {
     if (selectedContacts.length === 0) {
       toast({
@@ -446,12 +587,17 @@ export default function WhatsAppTemplateCreator() {
       return;
     }
 
-    if (!formData.businessAccountId) {
+    // Validate business account details and credentials
+    const accountValidation = await validateBusinessAccount();
+    if (!accountValidation.valid) {
       toast({
-        title: "Business account required",
-        description: "Please select a WhatsApp business account first.",
+        title: accountValidation.title,
+        description: accountValidation.message,
         variant: "destructive"
       });
+      if (accountValidation.message.includes("update your account settings")) {
+        setShowBusinessSetup(true);
+      }
       return;
     }
 
@@ -470,49 +616,95 @@ export default function WhatsAppTemplateCreator() {
 
     setIsLoading(true);
     try {
-      // Create template variables for personalization including template data
-      const templateVariables: { [key: string]: any } = {};
+      // First, create the WhatsApp template
+      const components = [];
 
-      selectedContacts.forEach((contact, index) => {
-        templateVariables[contact.phone || ''] = {
-          // Contact personalization data
-          name: contact.firstName + ' ' + contact.lastName,
-          company: contact.companyName || 'Your Company',
-          position: contact.position || '',
-          department: contact.department || '',
+      if (formData.headerType !== 'NONE') {
+        if (formData.headerType === 'TEXT' && formData.headerText) {
+          components.push({
+            type: 'HEADER',
+            text: formData.headerText
+          });
+        } else if (formData.headerMediaUrl) {
+          components.push({
+            type: 'HEADER',
+            format: formData.headerType.toUpperCase(),
+            example: {
+              header_handle: [formData.headerMediaUrl]
+            }
+          });
+        }
+      }
 
-          // Template data
-          templateName: formData.templateName,
-          headerType: formData.headerType,
-          headerText: formData.headerText || '',
-          headerMediaUrl: formData.headerMediaUrl || '',
-          messageBody: formData.messageBody,
-          footerText: formData.footerText || '',
-          buttons: formData.buttons.map(button => ({
-            type: button.type,
-            text: button.text,
-            ...(button.url && { url: button.url }),
-            ...(button.phoneNumber && { phoneNumber: button.phoneNumber })
-          })),
-
-          // Template metadata
-          templateType: formData.templateType,
-          languageCode: formData.languageCode
-        };
+      components.push({
+        type: 'BODY',
+        text: formData.messageBody
       });
 
+      if (formData.footerText.trim()) {
+        components.push({
+          type: 'FOOTER',
+          text: formData.footerText
+        });
+      }
+
+      formData.buttons.forEach((button) => {
+        const buttonComponent: any = {
+          type: 'BUTTONS',
+          text: button.text
+        };
+
+        if (button.type === 'URL' && button.url) {
+          buttonComponent.url = button.url;
+        } else if (button.type === 'PHONE_NUMBER' && button.phoneNumber) {
+          buttonComponent.phoneNumber = button.phoneNumber;
+        }
+
+        components.push(buttonComponent);
+      });
+
+      const templateData = {
+        businessAccountId: formData.businessAccountId,
+        templateName: formData.templateName,
+        templateType: formData.templateType,
+        languageCode: formData.languageCode,
+        components: components,
+        status: 'DRAFT' // Create as draft first, then send
+      };
+
+      const templateResponse = await post('/api/v1/whatsapp/templates', templateData);
+      const templateId = templateResponse.templateId || templateResponse.id;
+
+      // Now create campaign using the created template
       const campaignData = {
         businessAccountId: formData.businessAccountId,
         campaignName: `${formData.templateName} Campaign`,
-        templateId: 'template_id', // This should be the actual template ID from created template
-        recipientPhoneNumbers: selectedContacts.map(c => c.phone),
-        templateVariables: templateVariables
+        templateId: templateId,
+        recipientPhoneNumbers: selectedContacts.map(c => c.phone).filter(phone => phone != null),
+        languageCode: formData.languageCode,
+        // Include template variables with actual form data for message personalization
+        templateVariables: {
+          headerText: formData.headerText,
+          headerMediaUrl: formData.headerMediaUrl,
+          messageBody: formData.messageBody,
+          footerText: formData.footerText,
+          buttons: formData.buttons
+        },
+        // Scheduling data
+        ...(sendType === 'scheduled' && (scheduledDate || scheduledTime) && {
+          schedulingData: {
+            scheduledTime: new Date(`${scheduledDate}T${scheduledTime}`).toISOString(),
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            recurrenceType: recurrenceType,
+            recurrenceInterval: recurrenceInterval
+          }
+        })
       };
 
       await post('/api/v1/whatsapp/campaigns', campaignData);
       toast({
         title: "Messages sent successfully",
-        description: `Messages sent to ${selectedContacts.length} contacts.`
+        description: `Messages sent to ${selectedContacts.length} contacts using template "${formData.templateName}".`
       });
       setShowContactSelector(false);
       setSelectedContacts([]);
@@ -959,27 +1151,29 @@ The {{company}} Team"
             {/* Action Buttons */}
             <div className="flex gap-4">
               <Button
-                onClick={createTemplate}
+                onClick={() => createTemplate(true)}
                 disabled={isLoading || !formData.templateName || !formData.messageBody}
-                className="flex-1 h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                variant="outline"
+                className="flex-1 h-14 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 border-2 border-gray-300 hover:border-gray-400 text-gray-700 font-bold text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
                 size="lg"
               >
                 {isLoading ? (
                   <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-3" />
-                    Creating Template...
+                    <div className="w-5 h-5 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-3" />
+                    Saving Draft...
                   </>
                 ) : (
                   <>
                     <Save className="w-5 h-5 mr-3" />
-                    Create Template
+                    Save as Draft
                   </>
                 )}
               </Button>
 
+
               <Button
                 variant="outline"
-                onClick={() => setShowContactSelector(true)}
+                onClick={() => setShowSchedulingDialog(true)}
                 disabled={!formData.templateName || !formData.messageBody}
                 size="lg"
                 className="h-14 px-8 bg-gradient-to-r from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 border-2 border-green-200 hover:border-green-300 text-green-700 font-bold text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
@@ -1051,12 +1245,46 @@ The {{company}} Team"
                                   {formData.headerMediaUrl && (
                                     <div className="bg-gray-100 rounded-lg h-24 flex items-center justify-center mb-2 overflow-hidden">
                                       {formData.headerType === 'IMAGE' ? (
-                                        <Image className="w-8 h-8 text-gray-400" />
+                                        <img
+                                          src={formData.headerMediaUrl}
+                                          alt="Header image"
+                                          className="w-full h-full object-cover rounded-lg"
+                                          onError={(e) => {
+                                            const img = e.currentTarget as HTMLElement;
+                                            const fallback = img.nextElementSibling as HTMLElement;
+                                            img.style.display = 'none';
+                                            if (fallback) fallback.style.display = 'flex';
+                                          }}
+                                        />
                                       ) : formData.headerType === 'VIDEO' ? (
-                                        <Video className="w-8 h-8 text-gray-400" />
+                                        <video
+                                          src={formData.headerMediaUrl}
+                                          className="w-full h-full object-cover rounded-lg"
+                                          controls={false}
+                                          muted
+                                          onError={(e) => {
+                                            const video = e.currentTarget as HTMLElement;
+                                            const fallback = video.nextElementSibling as HTMLElement;
+                                            video.style.display = 'none';
+                                            if (fallback) fallback.style.display = 'flex';
+                                          }}
+                                        />
                                       ) : (
-                                        <FileText className="w-8 h-8 text-gray-400" />
+                                        <div className="flex items-center gap-2 text-gray-600">
+                                          <FileText className="w-5 h-5" />
+                                          <span className="text-xs font-medium">Document</span>
+                                        </div>
                                       )}
+                                      {/* Fallback icon if media fails to load */}
+                                      <div className="hidden items-center justify-center">
+                                        {formData.headerType === 'IMAGE' ? (
+                                          <Image className="w-8 h-8 text-gray-400" />
+                                        ) : formData.headerType === 'VIDEO' ? (
+                                          <Video className="w-8 h-8 text-gray-400" />
+                                        ) : (
+                                          <FileText className="w-8 h-8 text-gray-400" />
+                                        )}
+                                      </div>
                                     </div>
                                   )}
                                 </div>
@@ -1123,6 +1351,171 @@ The {{company}} Team"
         </DialogContent>
       </Dialog>
 
+      {/* Scheduling Dialog */}
+      <Dialog open={showSchedulingDialog} onOpenChange={setShowSchedulingDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-3">
+              <Clock className="w-6 h-6 text-blue-600" />
+              <span className="bg-gradient-to-r from-blue-900 to-indigo-800 bg-clip-text text-transparent font-bold">
+                Schedule WhatsApp Campaign
+              </span>
+            </DialogTitle>
+            <p className="text-sm text-gray-600">
+              Choose when to send your WhatsApp campaign
+            </p>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Send Type Selection */}
+            <div className="space-y-4">
+              <Label className="text-base font-semibold text-gray-800">Send Options</Label>
+              <RadioGroup
+                value={sendType}
+                onValueChange={(value: 'immediate' | 'scheduled') => setSendType(value)}
+                className="grid grid-cols-1 gap-4"
+              >
+                <div className={`flex items-center space-x-3 p-4 border-2 rounded-xl cursor-pointer transition-all duration-300 ${
+                  sendType === 'immediate'
+                    ? 'border-green-400 bg-green-50 shadow-lg'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}>
+                  <RadioGroupItem value="immediate" id="immediate" />
+                  <div className="flex-1">
+                    <Label htmlFor="immediate" className="text-base font-semibold text-gray-900 cursor-pointer flex items-center gap-2">
+                      <Send className="w-5 h-5 text-green-600" />
+                      Send Immediately
+                    </Label>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Send the campaign right now to selected contacts
+                    </p>
+                  </div>
+                </div>
+
+                <div className={`flex items-center space-x-3 p-4 border-2 rounded-xl cursor-pointer transition-all duration-300 ${
+                  sendType === 'scheduled'
+                    ? 'border-blue-400 bg-blue-50 shadow-lg'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}>
+                  <RadioGroupItem value="scheduled" id="scheduled" />
+                  <div className="flex-1">
+                    <Label htmlFor="scheduled" className="text-base font-semibold text-gray-900 cursor-pointer flex items-center gap-2">
+                      <Calendar className="w-5 h-5 text-blue-600" />
+                      Schedule for Later
+                    </Label>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Choose a specific date and time to send the campaign
+                    </p>
+                  </div>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {/* Scheduling Options */}
+            {sendType === 'scheduled' && (
+              <div className="space-y-4 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                <Label className="text-base font-semibold text-blue-900 flex items-center gap-2">
+                  <Clock className="w-5 h-5" />
+                  Scheduling Details
+                </Label>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-blue-800">Date</Label>
+                    <Input
+                      type="date"
+                      value={scheduledDate}
+                      onChange={(e) => setScheduledDate(e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
+                      className="h-12 bg-white border-2 border-blue-200 focus:border-blue-400 rounded-xl"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-blue-800">Time</Label>
+                    <Input
+                      type="time"
+                      value={scheduledTime}
+                      onChange={(e) => setScheduledTime(e.target.value)}
+                      className="h-12 bg-white border-2 border-blue-200 focus:border-blue-400 rounded-xl"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-blue-800">Recurrence (Optional)</Label>
+                  <Select
+                    value={recurrenceType}
+                    onValueChange={(value: 'none' | 'daily' | 'weekly' | 'monthly') => setRecurrenceType(value)}
+                  >
+                    <SelectTrigger className="h-12 bg-white border-2 border-blue-200 rounded-xl">
+                      <SelectValue placeholder="No recurrence" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">One-time only</SelectItem>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {recurrenceType !== 'none' && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-blue-800">Repeat Every</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min="1"
+                        max="30"
+                        value={recurrenceInterval}
+                        onChange={(e) => setRecurrenceInterval(parseInt(e.target.value) || 1)}
+                        className="h-12 bg-white border-2 border-blue-200 focus:border-blue-400 rounded-xl w-20"
+                      />
+                      <span className="text-sm text-blue-700">
+                        {recurrenceType === 'daily' ? 'day(s)' :
+                         recurrenceType === 'weekly' ? 'week(s)' : 'month(s)'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {(scheduledDate || scheduledTime) && (
+                  <div className="p-4 bg-blue-100 border border-blue-300 rounded-lg">
+                    <p className="text-sm font-medium text-blue-900">
+                      📅 Campaign will be sent on {scheduledDate && new Date(scheduledDate).toLocaleDateString()}
+                      {scheduledTime && ` at ${scheduledTime}`}
+                      {recurrenceType !== 'none' && `, repeating ${recurrenceType} every ${recurrenceInterval} ${recurrenceType === 'daily' ? 'day' : recurrenceType === 'weekly' ? 'week' : 'month'}${recurrenceInterval > 1 ? 's' : ''}`}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button
+              variant="outline"
+              onClick={() => setShowSchedulingDialog(false)}
+              className="px-6 hover:bg-gray-100 border-2"
+            >
+              <X className="w-4 h-4 mr-2" />
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setShowSchedulingDialog(false);
+                setShowContactSelector(true);
+              }}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 px-8 shadow-lg"
+            >
+              <Users className="w-4 h-4 mr-2" />
+              Select Recipients
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Contact Selector Dialog - FIXED */}
       <Dialog open={showContactSelector} onOpenChange={setShowContactSelector}>
         <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 gap-0">
@@ -1137,6 +1530,16 @@ The {{company}} Team"
                 <p className="text-sm text-gray-600 mt-1">
                   Choose contacts to send your WhatsApp message template to
                 </p>
+                {sendType === 'scheduled' && (scheduledDate || scheduledTime) && (
+                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm font-medium text-blue-900 flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      Scheduled for: {scheduledDate && new Date(scheduledDate).toLocaleDateString()}
+                      {scheduledTime && ` at ${scheduledTime}`}
+                      {recurrenceType !== 'none' && ` (${recurrenceType} repeat)`}
+                    </p>
+                  </div>
+                )}
               </div>
               <Button
                 variant="ghost"
