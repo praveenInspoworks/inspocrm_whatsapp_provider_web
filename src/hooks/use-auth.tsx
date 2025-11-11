@@ -100,6 +100,9 @@ interface User {
   avatarUrl?: string;
   tenantId?: string;
   tenantSchema?: string;
+  roleId?: number;
+  roleCode?: string;
+  roleName?: string;
 }
 
 export interface ProfileData {

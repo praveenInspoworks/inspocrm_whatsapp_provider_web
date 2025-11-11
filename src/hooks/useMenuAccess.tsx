@@ -1,7 +1,9 @@
 // hooks/useMenuAccess.tsx
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './use-auth';
-import { menuService, MenuGroup, MenuItem, UserPermissions, UserMenuResponse } from '@/services/menuService';
+import { useNavigate } from 'react-router-dom';
+import { menuService, MenuGroup, MenuItem, UserPermissions, UserMenuResponse, RoleMenuAccessResponse } from '@/services/menuService';
+import { healthCheck } from '@/services/apiService';
 
 // Export cache clearing function for use in logout
 export const clearMenuCache = () => {
@@ -55,6 +57,7 @@ const clearSessionCache = () => {
 
 export const useMenuAccess = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [userMenu, setUserMenu] = useState<MenuGroup[]>([]);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [roles, setRoles] = useState<string[]>([]);
@@ -167,7 +170,7 @@ const fetchUserAccess = useCallback(async (forceRefresh = false) => {
     if (isAdmin) {
       // ADMIN: Use current menu access API (full access)
       console.log('User is admin - using full menu access');
-      const permissionsResponse = await menuService.getCurrentUserAccess();
+      const permissionsResponse: UserPermissions = await menuService.getCurrentUserAccess();
 
       if (permissionsResponse) {
         perms = permissionsResponse.permissions || [];
@@ -206,63 +209,102 @@ const fetchUserAccess = useCallback(async (forceRefresh = false) => {
         });
       }
     } else {
-      // MEMBER/DEVELOPER: Get role-based menu access from tenant schema
-      console.log('User is member - using role-based menu access');
+      // MEMBER/DEVELOPER: Get role-based menu access using roleId from login response
+      console.log('User is member - using role-based menu access with roleId');
 
       // Get user permissions and roles
-      const permissionsResponse = await menuService.getCurrentUserAccess();
+      const permissionsResponse: UserPermissions = await menuService.getCurrentUserAccess();
       if (permissionsResponse) {
         perms = permissionsResponse.permissions || [];
         userRoles = permissionsResponse.roles || [];
       }
 
-      // Get role-based menu access from MemberAuthController
-      // This will query the role table in tenant schema for menu access JSON
-      const roleMenuAccess = await menuService.getMemberRoleMenuAccess(user.id);
+      // Use roleId from user login response to call the new API
+      if (user.roleId) {
+        console.log('Fetching menu access for roleId:', user.roleId);
+        const roleMenuAccessResponse = await menuService.getRoleMenuAccessById(user.roleId);
 
-      if (roleMenuAccess) {
-        // roleMenuAccess is in format: { "BUSINESS_INTEL": ["ANALYTICS", "REPORTS"] }
-        // Transform into MenuGroup format
-        const allMenuItems = await menuService.getMenuItems().catch(() => []);
+        if (roleMenuAccessResponse && roleMenuAccessResponse.length > 0) {
+          // Transform RoleMenuAccessResponse to MenuGroup format
+          transformedMenuGroups = roleMenuAccessResponse.map((roleMenuAccess: any) => {
+            const menuInfo = roleMenuAccess.accessibleMenus?.[0];
+            const menuItems = menuInfo?.menuItems || [];
 
-        transformedMenuGroups = Object.entries(roleMenuAccess).map(([menuName, menuItemCodes]) => {
-          // Find menu group info from available menus
-          const menuGroupInfo = allMenuItems.find((item: any) => item.menuName === menuName);
-
-          // Filter menu items that belong to this menu and are accessible
-          const accessibleMenuItems = (allMenuItems || [])
-            .filter((item: any) => item.menuName === menuName && (menuItemCodes as string[]).includes(item.itemCode))
-            .map((item: any) => ({
-              id: item.id?.toString() || '',
-              itemCode: item.itemCode || '',
-              itemName: item.itemName || '',
-              itemType: item.itemType || 'LINK',
-              url: item.url || '',
-              icon: item.icon || '',
-              sortOrder: item.sortOrder || 0,
-              requiresPermission: item.requiresPermission || '',
-              menuCode: item.menuCode || menuName,
-              menuName: item.menuName || menuName,
-              parentId: item.parentId || null,
-              status: item.status || 'ACTIVE',
-              isActive: item.isActive !== false,
-              createdAt: item.createdAt,
-              updatedAt: item.updatedAt
-            }));
-
-          return {
-            menuCode: menuGroupInfo?.menuCode || menuName,
-            menuName: menuName,
-            description: menuGroupInfo?.description || '',
-            icon: menuGroupInfo?.icon || 'layout',
-            sortOrder: menuGroupInfo?.sortOrder || 0,
-            accessibleMenus: accessibleMenuItems
-          };
-        });
+            return {
+              menuCode: menuInfo?.menuCode || 'UNKNOWN',
+              menuName: menuInfo?.menuName || 'Unknown Menu',
+              description: menuInfo?.description || '',
+              icon: menuInfo?.icon || 'layout',
+              sortOrder: menuInfo?.sortOrder || 0,
+              accessibleMenus: menuItems.map((item: any) => ({
+                id: item.id?.toString() || '',
+                itemCode: item.itemCode || '',
+                itemName: item.itemName || '',
+                itemType: item.itemType || 'LINK',
+                url: item.url || '',
+                icon: item.icon || '',
+                sortOrder: item.sortOrder || 0,
+                requiresPermission: item.requiresPermission || '',
+                menuCode: menuInfo?.menuCode || '',
+                menuName: menuInfo?.menuName || '',
+                parentId: item.parentItemId?.toString() || null,
+                status: item.isActive ? 'ACTIVE' : 'INACTIVE',
+                isActive: item.isActive || false,
+                createdAt: item.createdAt,
+                updatedAt: item.updatedAt
+              }))
+            };
+          });
+        } else {
+          console.log('No menu access found for roleId:', user.roleId);
+          transformedMenuGroups = [];
+        }
       } else {
-        // No role-based menu access found, navigate to home
-        console.log('No role-based menu access found for member, navigating to home');
-        transformedMenuGroups = [];
+        console.warn('No roleId found in user object, falling back to old method');
+        // Fallback to old method if roleId is not available
+        const roleMenuAccess: { [menuName: string]: string[] } = await menuService.getMemberRoleMenuAccess(user.id);
+
+        if (roleMenuAccess) {
+          // roleMenuAccess is in format: { "BUSINESS_INTEL": ["ANALYTICS", "REPORTS"] }
+          // Transform into MenuGroup format
+          const allMenuItems: MenuItem[] = await menuService.getMenuItems().catch(() => []);
+
+          transformedMenuGroups = Object.entries(roleMenuAccess).map(([menuName, menuItemCodes]) => {
+            // Filter menu items that belong to this menu and are accessible
+            const accessibleMenuItems = (allMenuItems || [])
+              .filter((item: MenuItem) => item.menuName === menuName && (menuItemCodes as string[]).includes(item.itemCode))
+              .map((item: MenuItem) => ({
+                id: item.id?.toString() || '',
+                itemCode: item.itemCode || '',
+                itemName: item.itemName || '',
+                itemType: item.itemType || 'LINK',
+                url: item.url || '',
+                icon: item.icon || '',
+                sortOrder: item.sortOrder || 0,
+                requiresPermission: item.requiresPermission || '',
+                menuCode: item.menuCode || menuName,
+                menuName: item.menuName || menuName,
+                parentId: item.parentId || null,
+                status: item.status || 'ACTIVE',
+                isActive: item.isActive !== false,
+                createdAt: item.createdAt,
+                updatedAt: item.updatedAt
+              }));
+
+            return {
+              menuCode: menuName,
+              menuName: menuName,
+              description: '',
+              icon: 'layout',
+              sortOrder: 0,
+              accessibleMenus: accessibleMenuItems
+            };
+          });
+        } else {
+          // No role-based menu access found, navigate to home
+          console.log('No role-based menu access found for member, navigating to home');
+          transformedMenuGroups = [];
+        }
       }
     }
 
@@ -286,6 +328,19 @@ const fetchUserAccess = useCallback(async (forceRefresh = false) => {
       return;
     }
 
+    // Check backend connectivity if API requests fail
+    const checkBackendConnectivity = async () => {
+      try {
+        console.log('🔍 Checking backend connectivity...');
+        const isHealthy = await healthCheck.isSystemHealthy();
+        console.log('Backend health check result:', isHealthy);
+        return isHealthy;
+      } catch (healthError) {
+        console.error('Backend health check failed:', healthError);
+        return false;
+      }
+    };
+
     // Handle 401 silently (token expired)
     if (error.status === 401) {
       console.warn('Authentication failed - token expired');
@@ -299,16 +354,116 @@ const fetchUserAccess = useCallback(async (forceRefresh = false) => {
       setPermissions([]);
       setRoles([]);
     } else {
-      setError(error.message || 'Failed to fetch user access');
-      setUserMenu([]);
-      setPermissions([]);
-      setRoles([]);
+      // Check if backend is reachable
+      const isBackendReachable = await checkBackendConnectivity();
+
+      if (!isBackendReachable) {
+        console.warn('🚨 Backend unreachable - initiating logout');
+        // Backend is down/unreachable, logout user
+        try {
+          await logout();
+          console.log('✅ User logged out due to backend unavailability');
+          return; // Don't continue with fallback logic
+        } catch (logoutError) {
+          console.error('Failed to logout user:', logoutError);
+          // Force navigation to login even if logout fails
+          window.location.href = '/login';
+          return;
+        }
+      }
+
+      // Backend is reachable but menu access failed - provide basic access
+      // For other errors (like subscription issues), provide basic menu access
+      // This allows users to still access subscription management and basic features
+      console.warn('Menu access failed, providing basic access:', error.message);
+
+      // Provide basic menu items for users with subscription issues
+      const basicMenuGroups: MenuGroup[] = [
+        {
+          menuCode: 'ACCOUNT',
+          menuName: 'Account',
+          description: 'Account management',
+          icon: 'user',
+          sortOrder: 1,
+          accessibleMenus: [
+            {
+              id: 'profile',
+              itemCode: 'PROFILE',
+              itemName: 'Profile',
+              itemType: 'LINK',
+              url: '/profile',
+              icon: 'user',
+              sortOrder: 1,
+              requiresPermission: 'READ',
+              menuCode: 'ACCOUNT',
+              menuName: 'Account',
+              parentId: null,
+              status: 'ACTIVE',
+              isActive: true,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            },
+            {
+              id: 'change-password',
+              itemCode: 'CHANGE_PASSWORD',
+              itemName: 'Change Password',
+              itemType: 'LINK',
+              url: '/change-password',
+              icon: 'lock',
+              sortOrder: 2,
+              requiresPermission: 'READ',
+              menuCode: 'ACCOUNT',
+              menuName: 'Account',
+              parentId: null,
+              status: 'ACTIVE',
+              isActive: true,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            }
+          ]
+        }
+      ];
+
+      // Check if user has billing issues and add subscription management
+      if (user && (user as any).billingStatus === 'INACTIVE' || (user as any).billingStatus === 'OVERDUE') {
+        basicMenuGroups.push({
+          menuCode: 'SUBSCRIPTION',
+          menuName: 'Subscription',
+          description: 'Subscription management',
+          icon: 'credit-card',
+          sortOrder: 2,
+          accessibleMenus: [
+            {
+              id: 'subscription',
+              itemCode: 'SUBSCRIPTION_MANAGEMENT',
+              itemName: 'Manage Subscription',
+              itemType: 'LINK',
+              url: '/subscription',
+              icon: 'credit-card',
+              sortOrder: 1,
+              requiresPermission: 'READ',
+              menuCode: 'SUBSCRIPTION',
+              menuName: 'Subscription',
+              parentId: null,
+              status: 'ACTIVE',
+              isActive: true,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            }
+          ]
+        });
+      }
+
+      setUserMenu(basicMenuGroups);
+      setPermissions(['READ']); // Basic read permissions
+      setRoles(user?.roles || ['MEMBER']);
+      setError('SUBSCRIPTION_ISSUE'); // Special error type for subscription issues
     }
   } finally {
     setIsLoading(false);
     fetchInProgressRef.current = false;
   }
-}, [user?.id, user?.roles, loadFromCache, saveToCache]);
+}, [user?.id, user?.roles, user?.roleId, loadFromCache, saveToCache]);
 
 
   // Initial load - only once per user session

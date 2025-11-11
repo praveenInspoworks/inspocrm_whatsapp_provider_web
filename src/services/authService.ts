@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { post, get } from './apiService';
+import apiService, { post, get } from './apiService';
 import { toast } from 'sonner';
 
 // Cross-tab authentication channel
@@ -54,6 +54,9 @@ export interface TenantLoginResponse {
     departmentName: string;
     lastLogin: string;
     tenantCode:string;
+    roleId?: number;
+    roleCode?: string;
+    roleName?: string;
   };
   tenantId: string;
   tenantSchema: string;
@@ -222,7 +225,7 @@ export const authService = {
   // Get tenant by code
   async getTenantByCode(tenantCode: string): Promise<TenantInfo | null> {
     try {
-      const response = await get<TenantInfo>('/api/v1/tenant/by-code/' + tenantCode);
+      const response = await get('/api/v1/tenant/by-code/' + tenantCode);
       return response;
     } catch (error: any) {
       console.error('Get tenant by code error:', error);
@@ -241,14 +244,16 @@ export const authService = {
         headers['X-Tenant-Code'] = credentials.tenantCode;
       }
 
-      // Use apiRequest directly to pass custom headers
-      const { default: apiService } = await import('./apiService');
-      const apiRequest = apiService.apiRequest;
-      const response = await apiRequest<TenantLoginResponse>('/api/v1/member/auth/signin', {
-        method: 'POST',
-        headers,
-        data: credentials
-      });
+      // Use post function with custom headers by setting them in localStorage temporarily
+      const originalTenantId = localStorage.getItem('tenant_id');
+      localStorage.setItem('tenant_id', credentials.tenantCode || '');
+      const response = await post('/api/v1/member/auth/signin', credentials);
+      // Restore original tenant_id
+      if (originalTenantId) {
+        localStorage.setItem('tenant_id', originalTenantId);
+      } else {
+        localStorage.removeItem('tenant_id');
+      }
 
       if (response) {
         // Store tenant tokens
@@ -277,7 +282,7 @@ export const authService = {
   // Tenant Login
   async tenantLogin(credentials: TenantLoginRequest): Promise<{ success: boolean; message: string; data?: TenantLoginResponse }> {
     try {
-      const response = await post<TenantLoginResponse>('/api/v1/auth/signin', credentials);
+      const response = await post('/api/v1/auth/signin', credentials);
 
       if (response) {
         // Store tenant tokens

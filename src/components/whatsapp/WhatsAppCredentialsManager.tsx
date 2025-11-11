@@ -148,6 +148,54 @@ export function WhatsAppCredentialsManager() {
     navigate('/whatsapp/setup');
   };
 
+  const handleSaveCredentials = async (accountData: any) => {
+    try {
+      setIsLoading(true);
+
+      // Single payload with all business account details and provider credentials
+      const payload = {
+        businessName: accountData.businessName || '',
+        phoneNumber: accountData.phoneNumber || '',
+        // Provider credentials
+        accessToken: accountData.accessToken || '',
+        accountSid: accountData.accountSid || '',
+        apiKey: accountData.apiKey || '',
+        appId: accountData.appId || '',
+        phoneNumberId: accountData.phoneNumberId || '',
+        accountId: accountData.accountId || ''
+      };
+
+      console.log('Creating WhatsApp account with payload:', payload);
+
+      // Check if required fields are provided
+      if (!payload.businessName.trim()) {
+        throw new Error('Business name is required');
+      }
+      if (!payload.phoneNumber.trim()) {
+        throw new Error('Phone number is required');
+      }
+
+      const response = await post('/api/v1/whatsapp/accounts/setup', payload);
+
+      if (response && response.id) {
+        toast({ title: "WhatsApp account created successfully" });
+        await loadAccounts(); // Refresh the list
+        return response;
+      } else if (response && response.error) {
+        throw new Error(response.error);
+      } else {
+        throw new Error('Failed to create WhatsApp account');
+      }
+    } catch (error: any) {
+      console.error('Error saving WhatsApp credentials:', error);
+      const errorMessage = error.response?.data?.error || error.message || "Failed to save WhatsApp credentials";
+      toast({ title: errorMessage, variant: "destructive" });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
       case 'ACTIVE': return 'default';

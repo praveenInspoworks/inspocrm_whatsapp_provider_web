@@ -16,28 +16,33 @@ import {
   Smartphone, Monitor, ZoomIn, ZoomOut, RotateCcw,
   Phone, Building, User, Save, Play, ArrowLeft, ArrowRight,
   Link, Copy, Sparkles, Bold, Italic, Underline, Palette,
-  Type, AlignLeft, AlignCenter, AlignRight
+  Type, AlignLeft, AlignCenter, AlignRight, X
 } from 'lucide-react';
-import { WhatsAppChatPreview } from './WhatsAppChatPreview';
 import { ContactSelector } from '../crm/ContactSelector';
 import { WhatsAppBusinessSetup } from './WhatsAppBusinessSetup';
 import { useToast } from '@/hooks/use-toast';
 import { get, post, uploadFile } from '@/services/apiService';
 
-// Contact type matching ContactSelector's interface
 interface Contact {
-  id: string;
+  id: number;
   firstName: string;
   lastName: string;
   email?: string;
   phone?: string;
-  company?: string;
+  companyId?: number | null;
   position?: string;
-  tags?: string[];
-  preferredContactMethod: 'email' | 'whatsapp' | 'both';
-  status: 'active' | 'inactive' | 'do_not_contact';
-  lastInteraction?: Date;
-  avatar?: string;
+  department?: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  isActive: boolean;
+  companyName?: string;
+  industry?: string;
+  priority?: string;
+  notes?: string;
+  version?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: string;
+  updatedBy?: string;
 }
 
 interface WhatsAppBusinessAccount {
@@ -55,20 +60,12 @@ interface TemplateFormData {
   templateName: string;
   templateType: 'MARKETING' | 'UTILITY' | 'AUTHENTICATION';
   languageCode: string;
-
-  // Header
   headerType: 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT' | 'NONE';
   headerText: string;
   headerMediaUrl: string;
   headerMediaFile: File | null;
-
-  // Body
   messageBody: string;
-
-  // Footer
   footerText: string;
-
-  // Buttons
   buttons: Array<{
     type: 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER' | 'COPY_CODE';
     text: string;
@@ -77,12 +74,10 @@ interface TemplateFormData {
   }>;
 }
 
-// Using the Contact interface from ContactSelector
-
-export function WhatsAppTemplateCreator() {
+export default function WhatsAppTemplateCreator() {
   const { toast } = useToast();
   const [businessAccounts, setBusinessAccounts] = useState<WhatsAppBusinessAccount[]>([]);
-  const [selectedContacts, setSelectedContacts] = useState<any[]>([]);
+  const [selectedContacts, setSelectedContacts] = useState<Contact[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showBusinessSetup, setShowBusinessSetup] = useState(false);
   const [showContactSelector, setShowContactSelector] = useState(false);
@@ -95,27 +90,21 @@ export function WhatsAppTemplateCreator() {
     templateName: '',
     templateType: 'MARKETING',
     languageCode: 'en',
-
     headerType: 'NONE',
     headerText: '',
     headerMediaUrl: '',
     headerMediaFile: null,
-
     messageBody: '',
-
     footerText: '',
-
     buttons: []
   });
 
-  // Load business accounts on component mount (don't show popup automatically)
   useEffect(() => {
     loadBusinessAccounts(false);
   }, []);
 
-  // Text formatting functions for textarea
   const applyTextFormatting = (formatType: string, value?: string) => {
-    const textarea = messageBodyRef.current as HTMLTextAreaElement;
+    const textarea = messageBodyRef.current;
     if (!textarea) return;
 
     const start = textarea.selectionStart;
@@ -135,58 +124,17 @@ export function WhatsAppTemplateCreator() {
       case 'underline':
         formattedText = `__${selectedText}__`;
         break;
-      case 'color':
-        // For color, we'll just apply it visually in the preview
-        formattedText = selectedText;
-        break;
       default:
         formattedText = selectedText;
     }
 
-    // Replace the selected text with formatted text
     const newValue = textarea.value.substring(0, start) + formattedText + textarea.value.substring(end);
     handleInputChange('messageBody', newValue);
 
-    // Restore cursor position
     setTimeout(() => {
       textarea.focus();
       textarea.setSelectionRange(start, start + formattedText.length);
     }, 0);
-  };
-
-  const handleBold = () => applyTextFormatting('bold');
-  const handleItalic = () => applyTextFormatting('italic');
-  const handleUnderline = () => applyTextFormatting('underline');
-
-  const handleFontSizeChange = (size: string) => {
-    setSelectedFontSize(size);
-    // Font size is visual only in preview
-  };
-
-  const handleColorChange = (color: string) => {
-    applyTextFormatting('color', color);
-  };
-
-  const handleAlignLeft = () => {
-    // Alignment is visual only in preview
-  };
-
-  const handleAlignCenter = () => {
-    // Alignment is visual only in preview
-  };
-
-  const handleAlignRight = () => {
-    // Alignment is visual only in preview
-  };
-
-  const handleFontFamilyChange = (font: string) => {
-    setSelectedFontFamily(font);
-    // Font family is visual only in preview
-  };
-
-  // Handle textarea input
-  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    handleInputChange('messageBody', e.target.value);
   };
 
   const loadBusinessAccounts = async (showPopupOnNoAccounts = true) => {
@@ -196,7 +144,6 @@ export function WhatsAppTemplateCreator() {
       if (accounts.length === 0 && showPopupOnNoAccounts) {
         setShowBusinessSetup(true);
       } else {
-        // Auto-select first active account
         const activeAccount = accounts.find((acc: WhatsAppBusinessAccount) =>
           acc.status === 'ACTIVE' || acc.status === 'VERIFIED'
         );
@@ -219,9 +166,8 @@ export function WhatsAppTemplateCreator() {
   const handleMediaUpload = async (file: File) => {
     if (!file) return;
 
-    // Validate file type and size
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'application/pdf'];
-    const maxSize = 16 * 1024 * 1024; // 16MB
+    const maxSize = 16 * 1024 * 1024;
 
     if (!allowedTypes.includes(file.type)) {
       toast({
@@ -243,7 +189,6 @@ export function WhatsAppTemplateCreator() {
 
     setIsLoading(true);
     try {
-      // Upload to backend using apiService
       const result = await uploadFile('/api/v1/whatsapp/upload/whatsapp-media', file);
       handleInputChange('headerMediaUrl', result.url);
       handleInputChange('headerMediaFile', file);
@@ -275,7 +220,7 @@ export function WhatsAppTemplateCreator() {
 
     setFormData(prev => ({
       ...prev,
-      buttons: [...prev.buttons, { type: 'QUICK_REPLY', text: '' }]
+      buttons: [...prev.buttons, { type: 'QUICK_REPLY', text: '', url: '', phoneNumber: '' }]
     }));
   };
 
@@ -318,7 +263,6 @@ export function WhatsAppTemplateCreator() {
       errors.push("Header text is required");
     }
 
-    // Validate buttons
     formData.buttons.forEach((button, index) => {
       if (!button.text.trim()) {
         errors.push(`Button ${index + 1} text is required`);
@@ -336,59 +280,66 @@ export function WhatsAppTemplateCreator() {
 
   const checkSubscriptionAndAccount = async () => {
     try {
-      // Check subscription status
-      const subscriptionResponse = await get('/api/v1/subscription/status');
-
-      // For development, skip payment validation
       const isDevelopment = process.env.NODE_ENV === 'development';
       if (isDevelopment) {
-        // In development, only check if account is linked
-        if (!formData.businessAccountId) {
+        if (businessAccounts.length === 0) {
           return {
             allowed: false,
             title: "WhatsApp Account Required",
-            message: "Please connect your WhatsApp Business account to create templates.",
+            message: "No WhatsApp Business accounts found. Please connect your account first.",
             showAccountSetup: true
+          };
+        }
+        if (!formData.businessAccountId) {
+          return {
+            allowed: false,
+            title: "Select WhatsApp Account",
+            message: "Please select a WhatsApp Business account to create templates."
           };
         }
         return { allowed: true };
       }
 
-      // Production validation
+      const subscriptionResponse = await get('/api/v1/subscription/status');
+
       if (!subscriptionResponse.active) {
         return {
           allowed: false,
           title: "Subscription Required",
-          message: "Please upgrade your subscription to create WhatsApp templates.",
-          showAccountSetup: false
+          message: "Please upgrade your subscription to create templates."
+        };
+      }
+
+      if (businessAccounts.length === 0) {
+        return {
+          allowed: false,
+          title: "WhatsApp Account Required",
+          message: "No WhatsApp Business accounts found. Please connect your account first.",
+          showAccountSetup: true
         };
       }
 
       if (!formData.businessAccountId) {
         return {
           allowed: false,
-          title: "WhatsApp Account Required",
-          message: "Please connect your WhatsApp Business account to create templates.",
-          showAccountSetup: true
+          title: "Select WhatsApp Account",
+          message: "Please select a WhatsApp Business account to create templates."
         };
       }
 
       return { allowed: true };
     } catch (error) {
       console.error('Subscription check failed:', error);
-      // In case of error, allow in development, block in production
       const isDevelopment = process.env.NODE_ENV === 'development';
       return {
         allowed: isDevelopment,
         title: isDevelopment ? "" : "Service Unavailable",
-        message: isDevelopment ? "" : "Unable to verify subscription. Please try again later.",
-        showAccountSetup: false
+        message: isDevelopment ? "" : "Unable to verify subscription. Please try again later."
       };
     }
   };
 
   const createTemplate = async () => {
-    // First validate basic form data
     const errors = validateTemplate();
     if (errors.length > 0) {
       toast({
@@ -399,7 +350,6 @@ export function WhatsAppTemplateCreator() {
       return;
     }
 
-    // Check subscription and account status
     const subscriptionCheck = await checkSubscriptionAndAccount();
     if (!subscriptionCheck.allowed) {
       toast({
@@ -415,17 +365,58 @@ export function WhatsAppTemplateCreator() {
 
     setIsLoading(true);
     try {
+      const components = [];
+
+      if (formData.headerType !== 'NONE') {
+        if (formData.headerType === 'TEXT' && formData.headerText) {
+          components.push({
+            type: 'HEADER',
+            text: formData.headerText
+          });
+        } else if (formData.headerMediaUrl) {
+          components.push({
+            type: 'HEADER',
+            format: formData.headerType.toUpperCase(),
+            example: {
+              header_handle: [formData.headerMediaUrl]
+            }
+          });
+        }
+      }
+
+      components.push({
+        type: 'BODY',
+        text: formData.messageBody
+      });
+
+      if (formData.footerText.trim()) {
+        components.push({
+          type: 'FOOTER',
+          text: formData.footerText
+        });
+      }
+
+      formData.buttons.forEach((button) => {
+        const buttonComponent: any = {
+          type: 'BUTTONS',
+          text: button.text
+        };
+
+        if (button.type === 'URL' && button.url) {
+          buttonComponent.url = button.url;
+        } else if (button.type === 'PHONE_NUMBER' && button.phoneNumber) {
+          buttonComponent.phoneNumber = button.phoneNumber;
+        }
+
+        components.push(buttonComponent);
+      });
+
       const templateData = {
         businessAccountId: formData.businessAccountId,
         templateName: formData.templateName,
         templateType: formData.templateType,
         languageCode: formData.languageCode,
-        headerType: formData.headerType,
-        headerText: formData.headerText,
-        headerMediaUrl: formData.headerMediaUrl,
-        messageContent: formData.messageBody,
-        footerText: formData.footerText,
-        buttons: formData.buttons
+        components: components
       };
 
       await post('/api/v1/whatsapp/templates', templateData);
@@ -455,7 +446,15 @@ export function WhatsAppTemplateCreator() {
       return;
     }
 
-    // Check subscription and account status
+    if (!formData.businessAccountId) {
+      toast({
+        title: "Business account required",
+        description: "Please select a WhatsApp business account first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const subscriptionCheck = await checkSubscriptionAndAccount();
     if (!subscriptionCheck.allowed) {
       toast({
@@ -471,12 +470,43 @@ export function WhatsAppTemplateCreator() {
 
     setIsLoading(true);
     try {
-      // Create campaign with selected contacts
+      // Create template variables for personalization including template data
+      const templateVariables: { [key: string]: any } = {};
+
+      selectedContacts.forEach((contact, index) => {
+        templateVariables[contact.phone || ''] = {
+          // Contact personalization data
+          name: contact.firstName + ' ' + contact.lastName,
+          company: contact.companyName || 'Your Company',
+          position: contact.position || '',
+          department: contact.department || '',
+
+          // Template data
+          templateName: formData.templateName,
+          headerType: formData.headerType,
+          headerText: formData.headerText || '',
+          headerMediaUrl: formData.headerMediaUrl || '',
+          messageBody: formData.messageBody,
+          footerText: formData.footerText || '',
+          buttons: formData.buttons.map(button => ({
+            type: button.type,
+            text: button.text,
+            ...(button.url && { url: button.url }),
+            ...(button.phoneNumber && { phoneNumber: button.phoneNumber })
+          })),
+
+          // Template metadata
+          templateType: formData.templateType,
+          languageCode: formData.languageCode
+        };
+      });
+
       const campaignData = {
+        businessAccountId: formData.businessAccountId,
         campaignName: `${formData.templateName} Campaign`,
-        templateId: 'template_id', // From created template
+        templateId: 'template_id', // This should be the actual template ID from created template
         recipientPhoneNumbers: selectedContacts.map(c => c.phone),
-        templateVariables: {} // Add variable replacement logic
+        templateVariables: templateVariables
       };
 
       await post('/api/v1/whatsapp/campaigns', campaignData);
@@ -484,7 +514,8 @@ export function WhatsAppTemplateCreator() {
         title: "Messages sent successfully",
         description: `Messages sent to ${selectedContacts.length} contacts.`
       });
-      // Reset form or navigate away
+      setShowContactSelector(false);
+      setSelectedContacts([]);
     } catch (error: any) {
       console.error('Send messages error:', error);
       toast({
@@ -495,33 +526,6 @@ export function WhatsAppTemplateCreator() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-
-
-  // Build preview message content for real-time preview
-  const buildPreviewMessage = () => {
-    let message = formData.messageBody;
-
-    // Add header if present
-    if (formData.headerType === 'TEXT' && formData.headerText) {
-      message = `*${formData.headerText}*\n\n${message}`;
-    }
-
-    // Add footer if present
-    if (formData.footerText) {
-      message += `\n\n_${formData.footerText}_`;
-    }
-
-    // Add buttons preview
-    if (formData.buttons.length > 0) {
-      message += '\n\n';
-      formData.buttons.forEach((button, index) => {
-        message += `🔘 ${button.text}\n`;
-      });
-    }
-
-    return message;
   };
 
   const selectedAccount = businessAccounts.find(acc => acc.id === formData.businessAccountId);
@@ -544,34 +548,65 @@ export function WhatsAppTemplateCreator() {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              {selectedAccount && (
-                <div className="flex items-center gap-3 px-4 py-2 bg-green-50/80 rounded-full border border-green-200/50 backdrop-blur-sm">
-                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse shadow-sm"></div>
-                  <span className="text-sm font-semibold text-green-800">{selectedAccount.accountName}</span>
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-ping"></div>
+              {businessAccounts.length === 0 ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowBusinessSetup(true)}
+                  className="bg-white/80 hover:bg-white border-gray-200 hover:border-green-300 transition-all duration-300 shadow-sm hover:shadow-md"
+                >
+                  <Link className="w-4 h-4 mr-2 text-green-600" />
+                  <span className="font-medium">Link Account</span>
+                </Button>
+              ) : (
+                <div className="flex items-center gap-3">
+                  {selectedAccount && (
+                    <div className="flex items-center gap-3 px-4 py-2 bg-green-50/80 rounded-full border border-green-200/50 backdrop-blur-sm">
+                      <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse shadow-sm"></div>
+                      <span className="text-sm font-semibold text-green-800">{selectedAccount.accountName}</span>
+                    </div>
+                  )}
+                  <Select
+                    value={formData.businessAccountId?.toString() || ""}
+                    onValueChange={(value) => handleInputChange('businessAccountId', parseInt(value))}
+                  >
+                    <SelectTrigger className="w-48 bg-white/80 hover:bg-white border-gray-200 hover:border-green-300 transition-all duration-300 shadow-sm hover:shadow-md">
+                      <SelectValue placeholder="Select Account" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {businessAccounts.map((account) => (
+                        <SelectItem key={account.id} value={account.id.toString()}>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${account.status === 'ACTIVE' || account.status === 'VERIFIED' ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+                            <span>{account.accountName}</span>
+                            <span className="text-xs text-gray-500">({account.displayPhoneNumber})</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowBusinessSetup(true)}
+                    className="bg-white/80 hover:bg-white border-gray-200 hover:border-green-300 transition-all duration-300 shadow-sm hover:shadow-md"
+                  >
+                    <Plus className="w-4 h-4 mr-2 text-green-600" />
+                    <span className="font-medium">Add Account</span>
+                  </Button>
                 </div>
               )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowBusinessSetup(true)}
-                className="bg-white/80 hover:bg-white border-gray-200 hover:border-green-300 transition-all duration-300 shadow-sm hover:shadow-md"
-              >
-                <Link className="w-4 h-4 mr-2 text-green-600" />
-                <span className="font-medium">{selectedAccount ? 'Switch Account' : 'Connect Account'}</span>
-              </Button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Content - Professional Layout */}
+      {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 xl:grid-cols-5 gap-8 min-h-[calc(100vh-8rem)]">
 
-          {/* Left Column - Template Editor (3/5 width) */}
+          {/* Left Column - Template Editor */}
           <div className="xl:col-span-3 space-y-6 overflow-y-auto">
-            {/* Template Editor Card */}
             <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm rounded-2xl overflow-hidden">
               <CardHeader className="pb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-100">
                 <CardTitle className="text-xl flex items-center gap-3">
@@ -601,7 +636,7 @@ export function WhatsAppTemplateCreator() {
                   />
                 </div>
 
-                {/* Header Section - Enhanced */}
+                {/* Header Section */}
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
                     <Label className="text-lg font-bold text-gray-800 flex items-center gap-3">
@@ -650,7 +685,6 @@ export function WhatsAppTemplateCreator() {
                     ))}
                   </RadioGroup>
 
-                  {/* Header Content Based on Type */}
                   {formData.headerType === 'TEXT' && (
                     <div className="space-y-3 p-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100">
                       <Label className="text-sm font-semibold text-purple-800">Header Text</Label>
@@ -721,7 +755,7 @@ export function WhatsAppTemplateCreator() {
                   )}
                 </div>
 
-                {/* Message Body - Enhanced */}
+                {/* Message Body */}
                 <div className="space-y-4">
                   <Label className="text-lg font-bold text-gray-800 flex items-center gap-3">
                     <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-teal-500 rounded-lg flex items-center justify-center">
@@ -738,7 +772,7 @@ export function WhatsAppTemplateCreator() {
                         size="sm"
                         className="h-8 w-8 p-0 hover:bg-green-100"
                         title="Bold"
-                        onClick={handleBold}
+                        onClick={() => applyTextFormatting('bold')}
                       >
                         <Bold className="w-4 h-4 text-green-700" />
                       </Button>
@@ -747,7 +781,7 @@ export function WhatsAppTemplateCreator() {
                         size="sm"
                         className="h-8 w-8 p-0 hover:bg-green-100"
                         title="Italic"
-                        onClick={handleItalic}
+                        onClick={() => applyTextFormatting('italic')}
                       >
                         <Italic className="w-4 h-4 text-green-700" />
                       </Button>
@@ -756,94 +790,10 @@ export function WhatsAppTemplateCreator() {
                         size="sm"
                         className="h-8 w-8 p-0 hover:bg-green-100"
                         title="Underline"
-                        onClick={handleUnderline}
+                        onClick={() => applyTextFormatting('underline')}
                       >
                         <Underline className="w-4 h-4 text-green-700" />
                       </Button>
-                    </div>
-
-                    <Separator orientation="vertical" className="h-6 bg-green-300" />
-
-                    <div className="flex items-center gap-1">
-                      <Select value={selectedFontSize} onValueChange={handleFontSizeChange}>
-                        <SelectTrigger className="h-8 w-16 text-xs bg-white border-green-300">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="12">12px</SelectItem>
-                          <SelectItem value="14">14px</SelectItem>
-                          <SelectItem value="16">16px</SelectItem>
-                          <SelectItem value="18">18px</SelectItem>
-                          <SelectItem value="20">20px</SelectItem>
-                          <SelectItem value="24">24px</SelectItem>
-                        </SelectContent>
-                      </Select>
-
-                      <div className="relative">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 hover:bg-green-100"
-                          title="Text Color"
-                        >
-                          <Palette className="w-4 h-4 text-green-700" />
-                        </Button>
-                        <input
-                          type="color"
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                          title="Choose text color"
-                          onChange={(e) => handleColorChange(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <Separator orientation="vertical" className="h-6 bg-green-300" />
-
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 hover:bg-green-100"
-                        title="Align Left"
-                        onClick={handleAlignLeft}
-                      >
-                        <AlignLeft className="w-4 h-4 text-green-700" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 hover:bg-green-100"
-                        title="Align Center"
-                        onClick={handleAlignCenter}
-                      >
-                        <AlignCenter className="w-4 h-4 text-green-700" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 hover:bg-green-100"
-                        title="Align Right"
-                        onClick={handleAlignRight}
-                      >
-                        <AlignRight className="w-4 h-4 text-green-700" />
-                      </Button>
-                    </div>
-
-                    <Separator orientation="vertical" className="h-6 bg-green-300" />
-
-                    <div className="flex items-center gap-1">
-                      <Select value={selectedFontFamily} onValueChange={handleFontFamilyChange}>
-                        <SelectTrigger className="h-8 w-20 text-xs bg-white border-green-300">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="normal">Normal</SelectItem>
-                          <SelectItem value="Arial">Arial</SelectItem>
-                          <SelectItem value="Helvetica">Helvetica</SelectItem>
-                          <SelectItem value="Times New Roman">Times</SelectItem>
-                          <SelectItem value="Courier New">Courier</SelectItem>
-                        </SelectContent>
-                      </Select>
                     </div>
                   </div>
 
@@ -852,7 +802,7 @@ export function WhatsAppTemplateCreator() {
                       ref={messageBodyRef}
                       id="messageBody"
                       value={formData.messageBody}
-                      onChange={handleTextareaChange}
+                      onChange={(e) => handleInputChange('messageBody', e.target.value)}
                       placeholder="Hi {{name}},
 
 Thank you for choosing {{company}}! We're excited to have you as part of our community.
@@ -899,7 +849,7 @@ The {{company}} Team"
                   <p className="text-xs text-gray-500">Optional footer text appears at the bottom of your message</p>
                 </div>
 
-                {/* Call-to-Action Buttons - Enhanced */}
+                {/* Call-to-Action Buttons */}
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
                     <Label className="text-lg font-bold text-gray-800 flex items-center gap-3">
@@ -1006,7 +956,7 @@ The {{company}} Team"
               </CardContent>
             </Card>
 
-            {/* Action Buttons - Enhanced */}
+            {/* Action Buttons */}
             <div className="flex gap-4">
               <Button
                 onClick={createTemplate}
@@ -1040,7 +990,7 @@ The {{company}} Team"
             </div>
           </div>
 
-          {/* Right Column - WhatsApp Preview (2/5 width) */}
+          {/* Right Column - WhatsApp Preview */}
           <div className="xl:col-span-2 space-y-6">
             <Card className="border-0 shadow-2xl bg-white/95 backdrop-blur-sm h-full rounded-3xl overflow-hidden">
               <CardHeader className="pb-6 bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
@@ -1100,39 +1050,13 @@ The {{company}} Team"
                                   )}
                                   {formData.headerMediaUrl && (
                                     <div className="bg-gray-100 rounded-lg h-24 flex items-center justify-center mb-2 overflow-hidden">
-                                      {formData.headerMediaUrl.includes('.jpg') || formData.headerMediaUrl.includes('.jpeg') || formData.headerMediaUrl.includes('.png') || formData.headerMediaUrl.includes('.gif') ? (
-                                        <img
-                                          src={formData.headerMediaUrl}
-                                          alt="Uploaded image"
-                                          className="w-full h-full object-cover rounded-lg"
-                                          onError={(e) => {
-                                            const img = e.currentTarget as HTMLImageElement;
-                                            img.style.display = 'none';
-                                            const fallback = img.nextElementSibling as HTMLElement;
-                                            if (fallback) fallback.style.display = 'flex';
-                                          }}
-                                        />
-                                      ) : formData.headerMediaUrl.includes('.mp4') || formData.headerMediaUrl.includes('.avi') || formData.headerMediaUrl.includes('.mov') ? (
-                                        <div className="text-center">
-                                          <Video className="w-8 h-8 mx-auto mb-1 text-gray-400" />
-                                          <p className="text-xs text-gray-500">Video</p>
-                                        </div>
-                                      ) : formData.headerMediaUrl.includes('.pdf') || formData.headerMediaUrl.includes('.doc') || formData.headerMediaUrl.includes('.docx') ? (
-                                        <div className="text-center">
-                                          <FileText className="w-8 h-8 mx-auto mb-1 text-gray-400" />
-                                          <p className="text-xs text-gray-500">Document</p>
-                                        </div>
+                                      {formData.headerType === 'IMAGE' ? (
+                                        <Image className="w-8 h-8 text-gray-400" />
+                                      ) : formData.headerType === 'VIDEO' ? (
+                                        <Video className="w-8 h-8 text-gray-400" />
                                       ) : (
-                                        <div className="text-center">
-                                          <FileText className="w-8 h-8 mx-auto mb-1 text-gray-400" />
-                                          <p className="text-xs text-gray-500">File</p>
-                                        </div>
+                                        <FileText className="w-8 h-8 text-gray-400" />
                                       )}
-                                      {/* Fallback for failed image loads */}
-                                      <div className="text-center" style={{ display: 'none' }}>
-                                        <Image className="w-8 h-8 mx-auto mb-1 text-gray-400" />
-                                        <p className="text-xs text-gray-500">Media</p>
-                                      </div>
                                     </div>
                                   )}
                                 </div>
@@ -1199,13 +1123,34 @@ The {{company}} Team"
         </DialogContent>
       </Dialog>
 
-      {/* Contact Selector Dialog */}
+      {/* Contact Selector Dialog - FIXED */}
       <Dialog open={showContactSelector} onOpenChange={setShowContactSelector}>
-        <DialogContent className="max-w-4xl max-h-[80vh]">
-          <DialogHeader>
-            <DialogTitle>Select Recipients</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
+        <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 gap-0">
+          {/* Dialog Header */}
+          <div className="flex-shrink-0 px-6 py-4 border-b bg-gradient-to-r from-green-50 to-emerald-50">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-green-600" />
+                  Select Recipients for WhatsApp Campaign
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Choose contacts to send your WhatsApp message template to
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowContactSelector(false)}
+                className="hover:bg-white/80 rounded-full"
+              >
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Contact Selector - Scrollable Content */}
+          <div className="flex-1 overflow-y-auto p-6">
             <ContactSelector
               onContactsSelected={setSelectedContacts}
               selectedContacts={selectedContacts}
@@ -1214,23 +1159,51 @@ The {{company}} Team"
               maxSelections={1000}
             />
           </div>
-          {selectedContacts.length > 0 && (
-            <div className="flex justify-end gap-3 pt-4 border-t">
-              <Button variant="outline" onClick={() => setShowContactSelector(false)}>
+
+          {/* Action Buttons - Fixed at bottom */}
+          <div className="flex-shrink-0 flex justify-between items-center px-6 py-4 border-t bg-white shadow-lg">
+            <div className="text-sm text-gray-600 font-medium">
+              {selectedContacts.length > 0 ? (
+                <span className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <span className="font-semibold text-green-700">{selectedContacts.length}</span> contact{selectedContacts.length !== 1 ? 's' : ''} selected
+                </span>
+              ) : (
+                <span className="text-gray-400 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4" />
+                  No contacts selected
+                </span>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowContactSelector(false)}
+                className="px-6 hover:bg-gray-100 border-2"
+              >
+                <X className="w-4 h-4 mr-2" />
                 Cancel
               </Button>
               <Button
-                onClick={() => {
-                  setShowContactSelector(false);
-                  sendMessages();
-                }}
-                className="bg-green-600 hover:bg-green-700"
+                onClick={sendMessages}
+                disabled={selectedContacts.length === 0 || isLoading}
+                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 px-8 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Send className="w-4 h-4 mr-2" />
-                Send to {selectedContacts.length} Contact{selectedContacts.length !== 1 ? 's' : ''}
+                {isLoading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 mr-2" />
+                    Send to {selectedContacts.length || 0}
+                  </>
+                )}
               </Button>
             </div>
-          )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

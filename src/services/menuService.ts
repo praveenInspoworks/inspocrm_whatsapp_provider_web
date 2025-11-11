@@ -40,6 +40,35 @@ export interface UserMenuResponse {
   userRoleCodes: string[];
 }
 
+export interface RoleMenuAccessResponse {
+  accessibleMenus: {
+    menuId: number;
+    menuCode: string;
+    menuName: string;
+    icon: string;
+    sortOrder: number;
+    menuItems: {
+      id: number;
+      menuId: number;
+      parentItemId?: number;
+      itemCode: string;
+      itemName: string;
+      itemType: string;
+      url: string;
+      icon: string;
+      sortOrder: number;
+      isActive: boolean;
+      requiresPermission: string;
+      createdAt: string;
+      updatedAt: string;
+      status: string;
+    }[];
+    hasAccess: boolean;
+  }[];
+  accessibleMenuItemCodes: string[];
+  userRoleCodes: string[];
+}
+
 // Response from the menu tree endpoint
 export interface MenuTreeResponse {
   id: string;
@@ -86,7 +115,7 @@ export const menuService = {
   },
 
   // Get all menu items from platform schema
-  async getMenuItems() {
+  async getMenuItems(): Promise<MenuItem[]> {
     return deduplicateRequest(
       'menu-items',
       () => apiService.get<MenuItem[]>('/api/v1/menus/items')
@@ -102,7 +131,7 @@ export const menuService = {
   },
 
   // Get user's accessible menus (with deduplication)
-  async getUserAccessibleMenus(userId: string) {
+  async getUserAccessibleMenus(userId: string): Promise<UserMenuResponse[]> {
     return deduplicateRequest(
       `user-menus-${userId}`,
       () => apiService.get<UserMenuResponse[]>(`/api/v1/menus/user-access/${userId}`)
@@ -118,7 +147,7 @@ export const menuService = {
   },
 
   // Get current user's menu and permissions (with deduplication and caching)
-  async getCurrentUserAccess() {
+  async getCurrentUserAccess(): Promise<UserPermissions> {
     try {
       const user = JSON.parse(localStorage.getItem('tenant_user') || '{}');
 
@@ -155,10 +184,18 @@ export const menuService = {
   },
 
   // Get member role-based menu access (calls MemberAuthController)
-  async getMemberRoleMenuAccess(userId: number) {
+  async getMemberRoleMenuAccess(userId: number): Promise<{ [menuName: string]: string[] }> {
     return deduplicateRequest(
       `member-role-menu-access-${userId}`,
       () => apiService.get<{ [menuName: string]: string[] }>(`/api/v1/member/auth/menu-access/${userId}`)
+    );
+  },
+
+  // Get role menu access by role ID (calls RoleController)
+  async getRoleMenuAccessById(roleId: number): Promise<RoleMenuAccessResponse[]> {
+    return deduplicateRequest(
+      `role-menu-access-${roleId}`,
+      () => apiService.get<RoleMenuAccessResponse[]>(`/api/roles/user-access/${roleId}`)
     );
   },
 

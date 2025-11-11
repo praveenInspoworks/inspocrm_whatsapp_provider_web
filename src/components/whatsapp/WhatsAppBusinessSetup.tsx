@@ -21,10 +21,10 @@ import { get, post, put } from '@/services/apiService';
 interface WhatsAppAccount {
   id: number;
   tenantId?: number;
-  accountName: string;
-  accountId: string;
-  phoneNumberId: string;
-  displayPhoneNumber: string;
+  accountName?: string;
+  accountId?: string;
+  phoneNumberId?: string;
+  displayPhoneNumber?: string;
   businessProfileName?: string;
   businessProfileAbout?: string;
   businessProfileWebsite?: string;
@@ -276,22 +276,6 @@ export function WhatsAppBusinessSetup() {
       required: true
     },
     {
-      id: 'api-setup',
-      title: 'API Configuration',
-      description: 'Configure API credentials and webhooks',
-      icon: Key,
-      completed: account?.status === 'ACTIVE',
-      required: false
-    },
-    {
-      id: 'webhook-setup',
-      title: 'Webhook Setup',
-      description: 'Set up message and status webhooks',
-      icon: Webhook,
-      completed: !!account?.webhookUrl,
-      required: false
-    },
-    {
       id: 'testing',
       title: 'Testing & Verification',
       description: 'Test your WhatsApp Business setup',
@@ -305,114 +289,134 @@ export function WhatsAppBusinessSetup() {
     loadWhatsAppAccount();
   }, []);
 
+  // Check URL parameters for accountId (for editing existing accounts)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const accountId = urlParams.get('accountId');
+    if (accountId) {
+      loadSpecificAccount(accountId);
+    }
+  }, []);
+
   const loadWhatsAppAccount = async () => {
     try {
-      // Check if we're editing an existing account from URL params
-      const urlParams = new URLSearchParams(window.location.search);
-      const accountId = urlParams.get('accountId');
+      const response = await get('/api/v1/whatsapp/accounts/current');
+      if (response && Array.isArray(response) && response.length > 0) {
+        const account = response[0];
+        setAccount(account);
 
-      if (accountId) {
-        // Load specific account for editing
-        const response = await get(`/api/v1/whatsapp/accounts/${accountId}`);
-        if (response) {
-          setAccount(response);
+        // Pre-fill form data from existing account
+        setSetupData(prev => ({
+          ...prev,
+          businessName: account.accountName || '',
+          phoneNumber: account.displayPhoneNumber || '',
+          accountSid: account.accountSid || '',
+          accessToken: account.accessToken || '',
+          apiKey: account.apiKey || '',
+          appId: account.appId || '',
+          phoneNumberId: account.phoneNumberId || '',
+          accountId: account.accountId || ''
+        }));
 
-          // Pre-fill form data from existing account
-          setSetupData(prev => ({
-            ...prev,
-            businessName: response.accountName || '',
-            phoneNumber: response.displayPhoneNumber || '',
-            // Map other fields if they exist
-            accountSid: response.accountSid || '',
-            accessToken: response.accessToken || '',
-            apiKey: response.apiKey || '',
-            appId: response.appId || '',
-            phoneNumberId: response.phoneNumberId || '',
-            accountId: response.accountId || ''
-          }));
-
-          // Detect and set provider based on account data
-          let detectedProvider: ProviderConfig | null = null;
-          if (response.accountSid) {
-            detectedProvider = PROVIDER_CONFIGS.find(p => p.id === 'TWILIO') || null;
-          } else if (response.apiKey && response.appId) {
-            detectedProvider = PROVIDER_CONFIGS.find(p => p.id === 'GUPSHUP') || null;
-          } else if (response.apiKey && response.phoneNumberId) {
-            detectedProvider = PROVIDER_CONFIGS.find(p => p.id === '360DIALOG') || null;
-          } else if (response.accessToken && response.phoneNumberId) {
-            detectedProvider = PROVIDER_CONFIGS.find(p => p.id === 'META') || null;
-          }
-
-          if (detectedProvider) {
-            setSelectedProvider(detectedProvider);
-          }
-
-          // Set environment based on account data (for Twilio)
-          if (response.accountSid === 'YOUR_TWILIO_SANDBOX_ACCOUNT_SID') {
-            setSetupData(prev => ({
-              ...prev,
-              environment: 'SANDBOX',
-              // Force correct sandbox credentials
-              accountSid: 'YOUR_TWILIO_SANDBOX_ACCOUNT_SID',
-              accessToken: 'YOUR_TWILIO_SANDBOX_AUTH_TOKEN',
-              phoneNumber: '+14155238886'
-            }));
-          }
-
-          // For editing, allow users to navigate through all steps
-          // They can modify any step and re-verify
+        // Detect and set provider based on account data
+        let detectedProvider: ProviderConfig | null = null;
+        if (account.accountSid) {
+          detectedProvider = PROVIDER_CONFIGS.find(p => p.id === 'TWILIO') || null;
+        } else if (account.apiKey && account.appId) {
+          detectedProvider = PROVIDER_CONFIGS.find(p => p.id === 'GUPSHUP') || null;
+        } else if (account.apiKey && account.phoneNumberId) {
+          detectedProvider = PROVIDER_CONFIGS.find(p => p.id === '360DIALOG') || null;
+        } else if (account.accessToken && account.phoneNumberId) {
+          detectedProvider = PROVIDER_CONFIGS.find(p => p.id === 'META') || null;
         }
-      } else {
-        // Try to load current account for new setup
-        const response = await get('/api/v1/whatsapp/accounts/current');
-        if (response) {
-          setAccount(response);
 
-          // Pre-fill form data from existing account
-          setSetupData(prev => ({
-            ...prev,
-            businessName: response.accountName || '',
-            phoneNumber: response.displayPhoneNumber || '',
-            // Map other fields if they exist
-            accountSid: response.accountSid || '',
-            accessToken: response.accessToken || '',
-            apiKey: response.apiKey || '',
-            appId: response.appId || '',
-            phoneNumberId: response.phoneNumberId || '',
-            accountId: response.accountId || ''
-          }));
+        if (detectedProvider) {
+          setSelectedProvider(detectedProvider);
+        }
 
-          // Detect and set provider based on account data
-          let detectedProvider: ProviderConfig | null = null;
-          if (response.accountSid) {
-            detectedProvider = PROVIDER_CONFIGS.find(p => p.id === 'TWILIO') || null;
-          } else if (response.apiKey && response.appId) {
-            detectedProvider = PROVIDER_CONFIGS.find(p => p.id === 'GUPSHUP') || null;
-          } else if (response.apiKey && response.phoneNumberId) {
-            detectedProvider = PROVIDER_CONFIGS.find(p => p.id === '360DIALOG') || null;
-          } else if (response.accessToken && response.phoneNumberId) {
-            detectedProvider = PROVIDER_CONFIGS.find(p => p.id === 'META') || null;
-          }
-
-          if (detectedProvider) {
-            setSelectedProvider(detectedProvider);
-          }
-
-          // Set environment based on account data (for Twilio)
-          if (response.accountSid === 'YOUR_TWILIO_SANDBOX_ACCOUNT_SID') {
-            setSetupData(prev => ({ ...prev, environment: 'SANDBOX' }));
-          }
+        // Set environment based on account data (for Twilio)
+        if (account.accountSid === 'YOUR_TWILIO_SANDBOX_ACCOUNT_SID') {
+          setSetupData(prev => ({ ...prev, environment: 'SANDBOX' }));
         }
       }
     } catch (error: any) {
-      // Account doesn't exist yet (404), or other error - that's fine for new setup
       if (error?.response?.status === 404) {
-        // No account exists yet, start fresh
         setAccount(null);
       } else {
-        // Log other errors but don't break the setup flow
         console.warn('Error loading WhatsApp account:', error);
       }
+    }
+  };
+
+  const loadSpecificAccount = async (accountId: string) => {
+    try {
+      const response = await get(`/api/v1/whatsapp/accounts/${accountId}`);
+      if (response) {
+        setAccount(response);
+
+        // Pre-fill form data from existing account
+        setSetupData(prev => ({
+          ...prev,
+          businessName: response.accountName || '',
+          phoneNumber: response.displayPhoneNumber || '',
+          accountSid: response.accountSid || '',
+          accessToken: response.accessToken || '',
+          apiKey: response.apiKey || '',
+          appId: response.appId || '',
+          phoneNumberId: response.phoneNumberId || '',
+          accountId: response.accountId || ''
+        }));
+
+        // Detect and set provider based on account data
+        let detectedProvider: ProviderConfig | null = null;
+        if (response.accountSid) {
+          detectedProvider = PROVIDER_CONFIGS.find(p => p.id === 'TWILIO') || null;
+        } else if (response.apiKey && response.appId) {
+          detectedProvider = PROVIDER_CONFIGS.find(p => p.id === 'GUPSHUP') || null;
+        } else if (response.apiKey && response.phoneNumberId) {
+          detectedProvider = PROVIDER_CONFIGS.find(p => p.id === '360DIALOG') || null;
+        } else if (response.accessToken && response.phoneNumberId) {
+          detectedProvider = PROVIDER_CONFIGS.find(p => p.id === 'META') || null;
+        }
+
+        if (detectedProvider) {
+          setSelectedProvider(detectedProvider);
+        }
+
+        // Set environment based on account data (for Twilio)
+        if (response.accountSid === 'YOUR_TWILIO_SANDBOX_ACCOUNT_SID') {
+          setSetupData(prev => ({ ...prev, environment: 'SANDBOX' }));
+        }
+
+        // Set current step to provider credentials since we're editing
+        setCurrentStep(2);
+      }
+    } catch (error: any) {
+      console.error('Error loading specific WhatsApp account:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load account details for editing.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleSaveAndContinue = async () => {
+    if (currentStep === 0) {
+      setCurrentStep(1);
+    } else if (currentStep === 1) {
+      setCurrentStep(2);
+    } else if (currentStep === 2) {
+      const response = await post('/api/v1/whatsapp/accounts/setup', {
+        ...setupData,
+        setupStep: 'business-info'
+      });
+      setAccount(response);
+      setCurrentStep(3);
+    } else if (currentStep === 3) {
+      await handlePhoneVerification();
+    } else {
+      setCurrentStep(prev => prev + 1);
     }
   };
 
@@ -476,34 +480,53 @@ export function WhatsAppBusinessSetup() {
       return;
     }
 
-    if (!account?.id) {
-      toast({
-        title: "Error",
-        description: "No account found. Please complete business information first.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     setIsSubmitting(true);
     try {
-      // Update existing account with provider credentials
-      const response = await put(`/api/v1/whatsapp/accounts/${account.id}`, {
-        ...setupData,
-        provider: selectedProvider.id
-      });
+      let accountIdToUpdate = account?.id;
 
-      setAccount(response);
-      setCurrentStep(3); // Go to phone verification step after updating credentials
+      // Create or update account with all data
+      const accountData = {
+        accountName: setupData.businessName || 'WhatsApp Business Account',
+        businessDescription: setupData.businessDescription || '',
+        businessCategory: setupData.businessCategory || '',
+        businessWebsite: setupData.businessWebsite || '',
+        phoneNumber: setupData.phoneNumber || '',
+        businessAddress: setupData.businessAddress || '',
+        contactEmail: setupData.contactEmail || '',
+        contactName: setupData.contactName || '',
+        accessToken: setupData.accessToken || '',
+        accountSid: setupData.accountSid || '',
+        apiKey: setupData.apiKey || '',
+        appId: setupData.appId || '',
+        phoneNumberId: setupData.phoneNumberId || '',
+        accountId: setupData.accountId || '',
+        provider: selectedProvider.id,
+        environment: setupData.environment
+      };
 
-      toast({
-        title: "Provider Credentials Updated",
-        description: "Your provider credentials have been updated successfully.",
-      });
-    } catch (error) {
+      let response;
+      if (accountIdToUpdate) {
+        response = await put(`/api/v1/whatsapp/accounts/${accountIdToUpdate}`, accountData);
+      } else {
+        response = await post('/api/v1/whatsapp/accounts/setup', accountData);
+      }
+
+      if (response) {
+        setAccount(response);
+        setCurrentStep(3); // Move to phone verification step
+        
+        toast({
+          title: "Provider Credentials Saved",
+          description: "Your provider credentials have been saved successfully.",
+        });
+      } else {
+        throw new Error('Failed to save account credentials');
+      }
+    } catch (error: any) {
+      console.error('Error saving provider credentials:', error);
       toast({
         title: "Error",
-        description: "Failed to update provider credentials.",
+        description: error.message || "Failed to save provider credentials.",
         variant: "destructive"
       });
     } finally {
@@ -521,6 +544,20 @@ export function WhatsAppBusinessSetup() {
       return;
     }
 
+    // Demo mode: Auto-verify for testing purposes
+    // This allows users to skip the verification process and proceed to testing
+    const isDemoMode = true; // Set to true for demo, false for production
+
+    if (isDemoMode) {
+      // For demo purposes, directly verify with demo code
+      await handleVerificationSubmit('123456');
+      toast({
+        title: "Demo Verification",
+        description: "Phone number verified automatically for demo purposes.",
+      });
+      return;
+    }
+
     // Special handling for Twilio sandbox
     if (selectedProvider?.id === 'TWILIO' && setupData.environment === 'SANDBOX' && setupData.phoneNumber === '+14155238886') {
       // Skip verification for Twilio sandbox - directly verify the code
@@ -530,18 +567,18 @@ export function WhatsAppBusinessSetup() {
 
     setIsVerifying(true);
     try {
-      await post('/api/v1/whatsapp/accounts/verify-phone', {
-        phoneNumber: setupData.phoneNumber
+      const response = await post('/api/v1/whatsapp/accounts/verify-phone', {
+        phoneNumber: setupData.phoneNumber,
+        accountId: account?.id
       });
 
       toast({
         title: "Verification Code Sent",
-        description: "A verification code has been sent to your phone number.",
+        description: `A verification code has been sent to your phone number. Demo code: ${response.demoCode || '123456'}`,
       });
 
       // Show code input dialog for manual verification
-      setVerificationCode(''); // Reset code input
-      // In a real implementation, show a modal for code input
+      setVerificationCode('');
 
     } catch (error) {
       toast({
@@ -558,11 +595,12 @@ export function WhatsAppBusinessSetup() {
     try {
       const response = await post('/api/v1/whatsapp/accounts/verify-code', {
         phoneNumber: setupData.phoneNumber,
-        verificationCode: code
+        verificationCode: code,
+        accountId: account?.id
       });
 
       setAccount(response);
-      setCurrentStep(4); // Go to API Configuration step after successful verification
+      setCurrentStep(4); // Go to Testing step after successful verification
 
       toast({
         title: "Phone Verified",
@@ -574,57 +612,6 @@ export function WhatsAppBusinessSetup() {
         description: "Invalid verification code. Please try again.",
         variant: "destructive"
       });
-    }
-  };
-
-  const handleAPISetup = async () => {
-    setIsSubmitting(true);
-    try {
-      const response = await post('/api/v1/whatsapp/accounts/setup-api', {
-        accountId: account?.id
-      });
-
-      setAccount(response);
-      setCurrentStep(5); // Go to Webhook Setup step after successful API setup
-
-      toast({
-        title: "API Setup Complete",
-        description: "Your WhatsApp Business API has been configured.",
-      });
-    } catch (error) {
-      toast({
-        title: "API Setup Failed",
-        description: "Failed to configure WhatsApp Business API.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleWebhookSetup = async () => {
-    setIsSubmitting(true);
-    try {
-      const response = await post('/api/v1/whatsapp/accounts/setup-webhook', {
-        accountId: account?.id,
-        webhookUrl: `${window.location.origin}/api/v1/whatsapp/webhook`
-      });
-
-      setAccount(response);
-      setCurrentStep(6); // Go to Testing & Verification step after successful webhook setup
-
-      toast({
-        title: "Webhook Configured",
-        description: "Your webhook has been configured successfully.",
-      });
-    } catch (error) {
-      toast({
-        title: "Webhook Setup Failed",
-        description: "Failed to configure webhook.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -651,13 +638,13 @@ export function WhatsAppBusinessSetup() {
       const response = await post('/api/v1/whatsapp/messages/test', {
         accountId: account?.id,
         message: testMessage,
-        recipient: testRecipient // Use custom recipient from dialog
+        recipient: testRecipient
       });
 
       setTestResults(response);
       setShowTestDialog(false);
-      setTestMessage(''); // Reset for next use
-      setTestRecipient(''); // Reset for next use
+      setTestMessage('');
+      setTestRecipient('');
 
       toast({
         title: "Test Message Sent",
@@ -1109,136 +1096,6 @@ export function WhatsAppBusinessSetup() {
           <div className="space-y-6 animate-in slide-in-from-right-5 duration-300">
             <div className="space-y-4">
               <div className="text-center">
-                <Key className="h-16 w-16 text-green-500 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  API Configuration
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  Configure your WhatsApp Business API credentials.
-                </p>
-              </div>
-
-              <Card className="max-w-2xl mx-auto">
-                <CardContent className="p-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium text-gray-900">API Status</h4>
-                        <p className="text-sm text-gray-600">Configure WhatsApp Business API</p>
-                      </div>
-                      <Badge variant={account?.apiKey ? "default" : "secondary"}>
-                        {account?.apiKey ? "Configured" : "Pending"}
-                      </Badge>
-                    </div>
-
-                    {account?.apiKey && (
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <div className="text-sm">
-                          <div className="font-medium text-gray-700 mb-2">API Key:</div>
-                          <code className="text-xs bg-gray-200 px-2 py-1 rounded">
-                            {account.apiKey.substring(0, 20)}...
-                          </code>
-                        </div>
-                      </div>
-                    )}
-
-                    <Button
-                      onClick={handleAPISetup}
-                      disabled={isSubmitting}
-                      className="w-full"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          Configuring API...
-                        </>
-                      ) : (
-                        <>
-                          <Key className="h-4 w-4 mr-2" />
-                          Configure API
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        );
-
-      case 5:
-        return (
-          <div className="space-y-6 animate-in slide-in-from-right-5 duration-300">
-            <div className="space-y-4">
-              <div className="text-center">
-                <Webhook className="h-16 w-16 text-purple-500 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  Webhook Configuration
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  Set up webhooks to receive messages and status updates.
-                </p>
-              </div>
-
-              <Card className="max-w-2xl mx-auto">
-                <CardContent className="p-6">
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">
-                        Webhook URL
-                      </label>
-                      <Input
-                        value={`${window.location.origin}/api/v1/whatsapp/webhook`}
-                        readOnly
-                        className="bg-gray-50"
-                      />
-                      <p className="text-xs text-gray-500">
-                        This URL will receive all WhatsApp messages and status updates.
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-4 bg-blue-50 rounded-lg">
-                        <MessageSquare className="h-8 w-8 text-blue-500 mx-auto mb-2" />
-                        <div className="text-sm font-medium text-blue-900">Message Webhook</div>
-                        <div className="text-xs text-blue-700">Incoming messages</div>
-                      </div>
-                      <div className="text-center p-4 bg-green-50 rounded-lg">
-                        <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                        <div className="text-sm font-medium text-green-900">Status Webhook</div>
-                        <div className="text-xs text-green-700">Delivery status</div>
-                      </div>
-                    </div>
-
-                    <Button
-                      onClick={handleWebhookSetup}
-                      disabled={isSubmitting}
-                      className="w-full"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          Configuring Webhook...
-                        </>
-                      ) : (
-                        <>
-                          <Webhook className="h-4 w-4 mr-2" />
-                          Configure Webhook
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        );
-
-      case 6:
-        return (
-          <div className="space-y-6 animate-in slide-in-from-right-5 duration-300">
-            <div className="space-y-4">
-              <div className="text-center">
                 <TestTube className="h-16 w-16 text-orange-500 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
                   Testing & Verification
@@ -1272,18 +1129,19 @@ export function WhatsAppBusinessSetup() {
                   <CardContent className="p-6">
                     <div className="flex items-center gap-3 mb-4">
                       <Globe className="h-6 w-6 text-green-500" />
-                      <h4 className="font-medium text-gray-900">Webhook Test</h4>
+                      <h4 className="font-medium text-gray-900">Account Status</h4>
                     </div>
                     <p className="text-sm text-gray-600 mb-4">
-                      Test webhook connectivity and message delivery.
+                      Check your WhatsApp Business account status.
                     </p>
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                    >
-                      <Webhook className="h-4 w-4 mr-2" />
-                      Test Webhook
-                    </Button>
+                    <div className="text-center p-4 bg-green-50 rounded-lg">
+                      <Badge variant="default" className="mb-2">
+                        {account?.status || 'PENDING'}
+                      </Badge>
+                      <p className="text-sm text-green-700">
+                        Your account is ready for messaging
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -1321,7 +1179,7 @@ export function WhatsAppBusinessSetup() {
         </div>
         <Progress value={progress} className="h-2 mb-6" />
 
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-5 gap-2">
           {SETUP_STEPS.map((step, index) => {
             const StepIcon = step.icon;
             const isCompleted = step.completed;
@@ -1359,6 +1217,38 @@ export function WhatsAppBusinessSetup() {
         </div>
       </div>
     );
+  };
+
+  const getContinueButtonText = () => {
+    switch (currentStep) {
+      case 0:
+        return isSubmitting ? "Saving Business Info..." : "Save & Continue to Provider Selection";
+      case 1:
+        return "Continue to Credentials";
+      case 2:
+        return isSubmitting ? "Saving Credentials..." : "Save Credentials & Continue";
+      case 3:
+        return isVerifying ? "Sending Code..." : "Send Verification Code";
+      case 4:
+        return "Start Creating Campaigns";
+      default:
+        return "Continue";
+    }
+  };
+
+  const isContinueDisabled = () => {
+    switch (currentStep) {
+      case 0:
+        return isSubmitting || !setupData.businessName || !setupData.businessCategory;
+      case 1:
+        return !selectedProvider;
+      case 2:
+        return isSubmitting || !selectedProvider;
+      case 3:
+        return isVerifying || !setupData.phoneNumber;
+      default:
+        return false;
+    }
   };
 
   return (
@@ -1407,25 +1297,6 @@ export function WhatsAppBusinessSetup() {
                   </div>
                 </div>
               </div>
-
-              <div className="mt-4 flex gap-2">
-                <Button
-                  onClick={() => setCurrentStep(6)}
-                  variant="outline"
-                  size="sm"
-                >
-                  <TestTube className="h-4 w-4 mr-2" />
-                  Go to Testing
-                </Button>
-                <Button
-                  onClick={() => window.location.reload()}
-                  variant="outline"
-                  size="sm"
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh Data
-                </Button>
-              </div>
             </CardContent>
           </Card>
         )}
@@ -1450,151 +1321,25 @@ export function WhatsAppBusinessSetup() {
             Previous
           </Button>
 
-          <div className="flex gap-3">
-            {currentStep === 0 && (
-              <Button
-                onClick={handleBusinessInfoSubmit}
-                disabled={isSubmitting || !setupData.businessName || !setupData.businessCategory}
-              >
-                {isSubmitting ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Saving Business Info...
-                  </>
-                ) : (
-                  <>
-                    <Check className="h-4 w-4 mr-2" />
-                    Save & Continue to Provider Selection
-                  </>
-                )}
-              </Button>
+          <Button
+            onClick={handleSaveAndContinue}
+            disabled={isContinueDisabled()}
+            className={currentStep === 4 ? "bg-green-600 hover:bg-green-700" : ""}
+          >
+            {currentStep === 0 && isSubmitting && (
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
             )}
-
-            {currentStep === 1 && (
-              <Button
-                onClick={() => setCurrentStep(2)}
-                disabled={!selectedProvider}
-              >
-                <Check className="h-4 w-4 mr-2" />
-                Continue to Credentials
-              </Button>
+            {currentStep === 2 && isSubmitting && (
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
             )}
-
-            {currentStep === 2 && (
-              <Button
-                onClick={handleProviderCredentialsSubmit}
-                disabled={isSubmitting || !selectedProvider}
-              >
-                {isSubmitting ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Saving Credentials...
-                  </>
-                ) : (
-                  <>
-                    <Check className="h-4 w-4 mr-2" />
-                    Save Credentials & Continue
-                  </>
-                )}
-              </Button>
+            {currentStep === 3 && isVerifying && (
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
             )}
-
-            {currentStep === 3 && (
-              <Button
-                onClick={handlePhoneVerification}
-                disabled={isVerifying || !setupData.phoneNumber}
-              >
-                {isVerifying ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Sending Code...
-                  </>
-                ) : (
-                  <>
-                    <Phone className="h-4 w-4 mr-2" />
-                    Verify Phone
-                  </>
-                )}
-              </Button>
-            )}
-
             {currentStep === 4 && (
-              <div className="flex gap-3">
-                <Button
-                  onClick={handleAPISetup}
-                  disabled={isSubmitting || account?.status === 'ACTIVE'}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      Configuring...
-                    </>
-                  ) : account?.status === 'ACTIVE' ? (
-                    <>
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      API Configured
-                    </>
-                  ) : (
-                    <>
-                      <Key className="h-4 w-4 mr-2" />
-                      Setup API
-                    </>
-                  )}
-                </Button>
-                {account?.status === 'ACTIVE' && (
-                  <Button
-                    onClick={() => setCurrentStep(5)}
-                    variant="outline"
-                  >
-                    Continue to Webhook Setup
-                  </Button>
-                )}
-                <Button
-                  onClick={() => setCurrentStep(6)}
-                  variant="secondary"
-                >
-                  Skip to Testing
-                </Button>
-              </div>
+              <Zap className="h-4 w-4 mr-2" />
             )}
-
-            {currentStep === 5 && (
-              <div className="flex gap-3">
-                <Button
-                  onClick={handleWebhookSetup}
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      Configuring...
-                    </>
-                  ) : (
-                    <>
-                      <Webhook className="h-4 w-4 mr-2" />
-                      Setup Webhook
-                    </>
-                  )}
-                </Button>
-                <Button
-                  onClick={() => setCurrentStep(6)}
-                  variant="secondary"
-                >
-                  Skip to Testing
-                </Button>
-              </div>
-            )}
-
-            {currentStep === 6 && (
-              <Button
-                onClick={() => window.location.href = '/whatsapp/campaigns'}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                <Zap className="h-4 w-4 mr-2" />
-                Start Creating Campaigns
-              </Button>
-            )}
-          </div>
+            {getContinueButtonText()}
+          </Button>
         </div>
 
         {/* Test Message Dialog */}

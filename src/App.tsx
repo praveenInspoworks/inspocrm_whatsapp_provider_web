@@ -37,14 +37,15 @@ import { WhatsAppBusinessSetup } from "./components/whatsapp/WhatsAppBusinessSet
 import { WhatsAppCredentialsManager } from "./components/whatsapp/WhatsAppCredentialsManager";
 import { IndividualAIWhatsAppGenerator } from "./components/whatsapp/IndividualAIWhatsAppGenerator";
 import { WhatsAppCampaignDashboard } from "./components/whatsapp/WhatsAppCampaignDashboard";
-import { WhatsAppTemplateCreator } from "./components/whatsapp/WhatsAppTemplateCreator";
+import { WhatsAppTemplateList } from "./components/whatsapp/WhatsAppTemplateList";
 import UserProfilePage from "./components/auth/UserProfilePage";
 import ForgotPasswordForm from "./components/auth/ForgotPasswordForm";
+import WhatsAppTemplateCreator from "./components/whatsapp/WhatsAppTemplateCreator";
 
 // Placeholder components for routes that need to be created
 const Dashboard = () => <WhatsAppCampaignDashboard />;
 const WhatsAppAccounts = () => <WhatsAppCredentialsManager />;
-const WhatsAppTemplates = () => <WhatsAppTemplateCreator />;
+const WhatsAppTemplates = () => <WhatsAppTemplateList />;
 const Campaigns = () => <WhatsAppCampaignDashboard />;
 const Contacts = () => <ContactManagement />;
 const Companies = () => <CompanyManagement />;
@@ -291,7 +292,8 @@ const App = () => {
 
                   {/* WhatsApp Management */}
                   <Route path="whatsapp/accounts" element={<MenuProtectedRoute menuItemCode="WHATSAPP_ACCOUNTS"><WhatsAppAccounts /></MenuProtectedRoute>} />
-                  <Route path="whatsapp/templates" element={<MenuProtectedRoute menuItemCode="WHATSAPP_TEMPLATES"><WhatsAppTemplates /></MenuProtectedRoute>} />
+                  <Route path="whatsapp/templates" element={<MenuProtectedRoute menuItemCode="WHATSAPP_TEMPLATES"><WhatsAppTemplateCreator /></MenuProtectedRoute>} />
+                  <Route path="whatsapp/templates/list" element={<MenuProtectedRoute menuItemCode="WHATSAPP_TEMPLATES"><WhatsAppTemplateList /></MenuProtectedRoute>} />
                   <Route path="whatsapp/campaigns" element={<MenuProtectedRoute menuItemCode="WHATSAPP_CAMPAIGNS"><Campaigns /></MenuProtectedRoute>} />
                   <Route path="whatsapp/credentials" element={<MenuProtectedRoute menuItemCode="WHATSAPP_SETTINGS"><WhatsAppCredentialsManager /></MenuProtectedRoute>} />
                   <Route path="whatsapp/setup" element={<WhatsAppBusinessSetup />} />

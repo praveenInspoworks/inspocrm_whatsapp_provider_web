@@ -148,14 +148,14 @@ class RoleService {
    * Get roles with pagination
    */
   async getRolesPaginated(params: PaginationParams & { filters?: RoleFilters }): Promise<PaginationResponse<Role>> {
-    const response = await post<PaginationResponse<Role>>('/api/v1/roles/search', {
+    const response = await post('/api/v1/roles/search', {
       page: params.page,
       size: params.size,
       sortBy: params.sortBy || 'id',
       sortDirection: params.sortDirection || 'asc',
       filters: params.filters,
       logicExpression: params.logicExpression
-    });
+    }) as PaginationResponse<Role>;
     return response;
   }
 }
