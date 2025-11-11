@@ -1,0 +1,19 @@
+<svg width="200" height="60" viewBox="0 0 200 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Magnifying Glass with Growth Arrow -->
+  <g transform="translate(10, 15)">
+    <!-- Magnifying Glass Handle -->
+    <path d="M25 35L35 25" stroke="#32CD32" stroke-width="3" stroke-linecap="round"/>
+    
+    <!-- Magnifying Glass Circle -->
+    <circle cx="20" cy="20" r="12" stroke="#32CD32" stroke-width="3" fill="none"/>
+    
+    <!-- Growth Arrow Inside Magnifying Glass -->
+    <path d="M16 16L24 24M24 24L20 20M24 24L24 20" stroke="#32CD32" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  
+  <!-- Brand Name -->
+  <text x="60" y="25" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#000000">INSPOCRM</text>
+  
+  <!-- Tagline -->
+  <text x="60" y="40" font-family="Arial, sans-serif" font-size="12" fill="#000000">Inspire Leads. Close Deals.</text>
+</svg>
