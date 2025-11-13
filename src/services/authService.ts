@@ -607,11 +607,35 @@ export const authService = {
 
   // ===== AUTHENTICATION STATUS =====
 
-  // Check tenant authentication
-  isTenantAuthenticated(): boolean {
+  // Check tenant authentication (with optional token validation)
+  isTenantAuthenticated(validateToken: boolean = false): boolean {
     const token = localStorage.getItem('tenant_token');
     const user = localStorage.getItem('tenant_user');
-    return !!(token && user);
+
+    if (!token || !user) {
+      return false;
+    }
+
+    // If validation is requested, check token expiration
+    if (validateToken) {
+      try {
+        // Decode JWT token to check expiration (simple check)
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const currentTime = Date.now() / 1000;
+
+        if (payload.exp && payload.exp < currentTime) {
+          // Token is expired, clear auth data
+          this.clearTenantAuth();
+          return false;
+        }
+      } catch (error) {
+        // If token parsing fails, consider it invalid
+        this.clearTenantAuth();
+        return false;
+      }
+    }
+
+    return true;
   },
 
   // Legacy method (for backward compatibility)

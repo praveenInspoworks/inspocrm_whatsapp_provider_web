@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { TestTube, Plus, Edit, Trash2, CheckCircle, XCircle, MessageSquare, Phone, Settings, Webhook } from "lucide-react";
+import { TestTube, Plus, Edit, Trash2, CheckCircle, XCircle, MessageSquare, Phone, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { get, post, del } from "@/services/apiService";
 import { useNavigate } from "react-router-dom";
@@ -17,7 +17,6 @@ interface WhatsAppAccount {
   displayPhoneNumber: string;
   businessProfileName?: string;
   status: 'PENDING' | 'VERIFIED' | 'ACTIVE' | 'SUSPENDED';
-  webhookUrl?: string;
   accessToken?: string;
   accountSid?: string;
   apiKey?: string;
@@ -285,12 +284,6 @@ export function WhatsAppCredentialsManager() {
                         <Badge variant="destructive" className="text-xs">
                           <XCircle className="mr-1 h-3 w-3" />
                           Inactive
-                        </Badge>
-                      )}
-                      {account.webhookUrl && (
-                        <Badge variant="secondary" className="text-xs">
-                          <Webhook className="mr-1 h-3 w-3" />
-                          Webhook
                         </Badge>
                       )}
                     </div>

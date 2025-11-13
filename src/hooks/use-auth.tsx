@@ -256,9 +256,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     navigate('/');
   };
 
-  // Check for existing session - simplified
+  // Check for existing session with token validation
   useEffect(() => {
-    const isAuthenticated = authService.isTenantAuthenticated();
+    // Use token validation to prevent auto-login with expired tokens
+    const isAuthenticated = authService.isTenantAuthenticated(true); // true = validate token expiration
     if (isAuthenticated) {
       const userData = authService.getTenantUser();
       if (userData) {

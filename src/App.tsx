@@ -42,6 +42,7 @@ import UserProfilePage from "./components/auth/UserProfilePage";
 import ForgotPasswordForm from "./components/auth/ForgotPasswordForm";
 import WhatsAppTemplateCreator from "./components/whatsapp/WhatsAppTemplateCreator";
 import WhatsAppAnalyticsDashboard from "./components/whatsapp/WhatsAppAnalyticsDashboard";
+import WhatsAppWebhookMessages from "./components/whatsapp/WhatsAppWebhookMessages";
 
 // Placeholder components for routes that need to be created
 const Dashboard = () => <WhatsAppCampaignDashboard />;
@@ -297,6 +298,7 @@ const App = () => {
                   <Route path="whatsapp/templates/list" element={<MenuProtectedRoute menuItemCode="WHATSAPP_TEMPLATES"><WhatsAppTemplateList /></MenuProtectedRoute>} />
                   <Route path="whatsapp/campaigns" element={<MenuProtectedRoute menuItemCode="WHATSAPP_CAMPAIGNS"><Campaigns /></MenuProtectedRoute>} />
                   <Route path="whatsapp/credentials" element={<MenuProtectedRoute menuItemCode="WHATSAPP_SETTINGS"><WhatsAppCredentialsManager /></MenuProtectedRoute>} />
+                  <Route path="whatsapp/webhook-messages" element={<MenuProtectedRoute menuItemCode="WHATSAPP_WEBHOOK_MESSAGES"><WhatsAppWebhookMessages /></MenuProtectedRoute>} />
                   <Route path="whatsapp/setup" element={<WhatsAppBusinessSetup />} />
 
                   {/* Campaign Management */}
