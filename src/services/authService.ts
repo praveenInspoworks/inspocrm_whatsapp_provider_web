@@ -199,7 +199,7 @@ export const authService = {
   async searchTenants(query: string): Promise<TenantInfo[]> {
     try {
       // Use direct fetch to avoid token refresh logic that causes page reloads
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8081/inspocrm";
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || "https://api.inspoworks.com/inspocrm";
       const url = `${baseUrl}/api/v1/tenant/search?q=${encodeURIComponent(query)}`;
 
       const response = await fetch(url, {

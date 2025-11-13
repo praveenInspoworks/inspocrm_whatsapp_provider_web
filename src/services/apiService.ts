@@ -82,7 +82,7 @@ async function apiRequest<T = any>(
     params?: any;
   } = {}
 ): Promise<T> {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8081/inspocrm";
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || "https://api.inspoworks.com/inspocrm";
   const url = endpoint.startsWith("http") ? endpoint : `${baseUrl}${endpoint}`;
 
   // Build headers
@@ -330,7 +330,7 @@ export const uploadFile = async (
   file: File,
   additionalData?: Record<string, string>
 ): Promise<any> => {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8081/inspocrm";
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || "https://api.inspoworks.com/inspocrm";
   const url = endpoint.startsWith("http") ? endpoint : `${baseUrl}${endpoint}`;
 
   const formData = new FormData();
