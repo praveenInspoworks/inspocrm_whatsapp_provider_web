@@ -216,10 +216,7 @@ export function WhatsAppBusinessSetup() {
     businessName: '',
     businessDescription: '',
     businessCategory: '',
-    businessWebsite: '',
     phoneNumber: '',
-    businessAddress: '',
-    contactEmail: '',
     contactName: '',
     // Provider-specific fields
     accessToken: '',
@@ -240,13 +237,18 @@ export function WhatsAppBusinessSetup() {
   const [testRecipient, setTestRecipient] = useState('');
   const [testResults, setTestResults] = useState<any>(null);
 
+  // Webhook registration instructions dialog
+  const [showWebhookInstructions, setShowWebhookInstructions] = useState(false);
+  const [webhookUrl, setWebhookUrl] = useState('https://api.inspoworks.com/inspocrm/api/v1/whatsapp/webhook');
+  const [webhookRegistered, setWebhookRegistered] = useState(false);
+
   const SETUP_STEPS: SetupStep[] = [
     {
       id: 'business-info',
       title: 'Business Information',
       description: 'Provide your business details for WhatsApp Business API',
       icon: Settings,
-      completed: !!setupData.businessName && !!setupData.businessCategory,
+      completed: !!setupData.businessName,
       required: true
     },
     {
@@ -421,10 +423,10 @@ export function WhatsAppBusinessSetup() {
   };
 
   const handleBusinessInfoSubmit = async () => {
-    if (!setupData.businessName || !setupData.businessCategory) {
+    if (!setupData.businessName) {
       toast({
         title: "Validation Error",
-        description: "Please fill in all required business information.",
+        description: "Please fill in the business name.",
         variant: "destructive"
       });
       return;
@@ -488,12 +490,7 @@ export function WhatsAppBusinessSetup() {
       const accountData = {
         accountName: setupData.businessName || 'WhatsApp Business Account',
         businessDescription: setupData.businessDescription || '',
-        businessCategory: setupData.businessCategory || '',
-        businessWebsite: setupData.businessWebsite || '',
         phoneNumber: setupData.phoneNumber || '',
-        businessAddress: setupData.businessAddress || '',
-        contactEmail: setupData.contactEmail || '',
-        contactName: setupData.contactName || '',
         accessToken: setupData.accessToken || '',
         accountSid: setupData.accountSid || '',
         apiKey: setupData.apiKey || '',
@@ -600,12 +597,15 @@ export function WhatsAppBusinessSetup() {
       });
 
       setAccount(response);
-      setCurrentStep(4); // Go to Testing step after successful verification
+      setWebhookRegistered(true); // Show webhook registered after successful verification
 
       toast({
-        title: "Phone Verified",
-        description: "Your phone number has been verified successfully.",
+        title: "Account & Webhook Verified",
+        description: "Your phone number has been verified and registered with the INSP Works webhook.",
       });
+
+      setCurrentStep(4); // Go to Testing step after successful verification
+
     } catch (error) {
       toast({
         title: "Verification Failed",
@@ -647,9 +647,14 @@ export function WhatsAppBusinessSetup() {
       setTestRecipient('');
 
       toast({
-        title: "Test Message Sent",
-        description: `Your test message has been sent to ${testRecipient}.`,
+        title: "Test Message Sent Successfully",
+        description: `Your test message has been sent to ${testRecipient}. Complete webhook registration to monitor message status.`,
       });
+
+      // Show webhook instructions after successful test message
+      setTimeout(() => {
+        setShowWebhookInstructions(true);
+      }, 1000);
     } catch (error) {
       toast({
         title: "Test Failed",
@@ -900,37 +905,15 @@ export function WhatsAppBusinessSetup() {
       case 0:
         return (
           <div className="space-y-6 animate-in slide-in-from-right-5 duration-300">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
-                  Business Name *
-                </label>
-                <Input
-                  placeholder="e.g., Acme Corporation"
-                  value={setupData.businessName}
-                  onChange={(e) => setSetupData(prev => ({ ...prev, businessName: e.target.value }))}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
-                  Business Category *
-                </label>
-                <select
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={setupData.businessCategory}
-                  onChange={(e) => setSetupData(prev => ({ ...prev, businessCategory: e.target.value }))}
-                >
-                  <option value="">Select Category</option>
-                  <option value="RETAIL">Retail</option>
-                  <option value="FOOD">Food & Beverage</option>
-                  <option value="HEALTH">Health & Wellness</option>
-                  <option value="FINANCE">Finance</option>
-                  <option value="TECHNOLOGY">Technology</option>
-                  <option value="EDUCATION">Education</option>
-                  <option value="OTHER">Other</option>
-                </select>
-              </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">
+                Business Name *
+              </label>
+              <Input
+                placeholder="e.g., Acme Corporation"
+                value={setupData.businessName}
+                onChange={(e) => setSetupData(prev => ({ ...prev, businessName: e.target.value }))}
+              />
             </div>
 
             <div className="space-y-2">
@@ -943,55 +926,6 @@ export function WhatsAppBusinessSetup() {
                 onChange={(e) => setSetupData(prev => ({ ...prev, businessDescription: e.target.value }))}
                 rows={3}
               />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
-                  Business Website
-                </label>
-                <Input
-                  placeholder="https://www.yourbusiness.com"
-                  value={setupData.businessWebsite}
-                  onChange={(e) => setSetupData(prev => ({ ...prev, businessWebsite: e.target.value }))}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
-                  Business Address
-                </label>
-                <Input
-                  placeholder="123 Business St, City, State"
-                  value={setupData.businessAddress}
-                  onChange={(e) => setSetupData(prev => ({ ...prev, businessAddress: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
-                  Contact Name
-                </label>
-                <Input
-                  placeholder="John Doe"
-                  value={setupData.contactName}
-                  onChange={(e) => setSetupData(prev => ({ ...prev, contactName: e.target.value }))}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
-                  Contact Email
-                </label>
-                <Input
-                  type="email"
-                  placeholder="john@yourbusiness.com"
-                  value={setupData.contactEmail}
-                  onChange={(e) => setSetupData(prev => ({ ...prev, contactEmail: e.target.value }))}
-                />
-              </div>
             </div>
 
             <Alert>
@@ -1105,7 +1039,7 @@ export function WhatsAppBusinessSetup() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <Card>
                   <CardContent className="p-6">
                     <div className="flex items-center gap-3 mb-4">
@@ -1122,6 +1056,29 @@ export function WhatsAppBusinessSetup() {
                       <MessageSquare className="h-4 w-4 mr-2" />
                       Send Test Message
                     </Button>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Webhook className="h-6 w-6 text-purple-500" />
+                      <h4 className="font-medium text-gray-900">Webhook Registration</h4>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Your account has been registered with the INSP Works webhook for multi-tenant messaging.
+                    </p>
+                    <div className="text-center p-4 bg-purple-50 rounded-lg">
+                      <Badge variant={webhookRegistered ? 'default' : 'secondary'} className="mb-2">
+                        {webhookRegistered ? 'REGISTERED' : 'PENDING'}
+                      </Badge>
+                      <p className="text-sm text-purple-700">
+                        {webhookRegistered
+                          ? 'Webhook registered with INSP Works'
+                          : 'Webhook registration pending'
+                        }
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -1239,7 +1196,7 @@ export function WhatsAppBusinessSetup() {
   const isContinueDisabled = () => {
     switch (currentStep) {
       case 0:
-        return isSubmitting || !setupData.businessName || !setupData.businessCategory;
+        return isSubmitting || !setupData.businessName;
       case 1:
         return !selectedProvider;
       case 2:
@@ -1381,6 +1338,262 @@ export function WhatsAppBusinessSetup() {
                 </Button>
                 <Button variant="outline" onClick={() => setShowTestDialog(false)}>
                   Cancel
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Webhook Instructions Dialog - Shows after successful test message */}
+        <Dialog open={showWebhookInstructions} onOpenChange={setShowWebhookInstructions}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Webhook className="h-5 w-5 text-purple-500" />
+              Webhook Registration Instructions
+            </DialogTitle>
+          </DialogHeader>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <div className="space-y-6">
+              <div className="text-center">
+                <Webhook className="h-16 w-16 text-purple-500 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  Register Webhook for Message Status Updates
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  Complete your WhatsApp setup by registering the webhook URL with your provider to monitor message delivery status.
+                </p>
+              </div>
+
+              {/* Webhook URL Display */}
+              <Card className="bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200">
+                <CardContent className="p-6">
+                  <Label className="text-sm font-medium text-gray-900 mb-2 block">
+                    Copy this Webhook URL:
+                  </Label>
+                  <div className="flex items-center gap-2 p-4 bg-white rounded-lg border">
+                    <Input
+                      value={webhookUrl}
+                      readOnly
+                      className="font-mono text-sm border-0 bg-transparent shadow-none"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(webhookUrl);
+                        toast({
+                          title: "Copied!",
+                          description: "Webhook URL copied to clipboard.",
+                        });
+                      }}
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <Alert className="mt-4">
+                    <Webhook className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>This API monitors message status updates:</strong>
+                      <br />
+                      • Message delivered ✓
+                      <br />
+                      • Message read ✓
+                      <br />
+                      • Message failed ✗
+                    </AlertDescription>
+                  </Alert>
+                </CardContent>
+              </Card>
+
+              {/* Provider-Specific Instructions */}
+              {selectedProvider && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <selectedProvider.icon className={`h-5 w-5 ${
+                        selectedProvider.color === 'blue' ? 'text-blue-500' :
+                        selectedProvider.color === 'red' ? 'text-red-500' :
+                        selectedProvider.color === 'purple' ? 'text-purple-600' :
+                        'text-green-500'
+                      }`} />
+                      {selectedProvider.name} Webhook Setup
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+
+                    {/* Meta/Facebook Instructions */}
+                    {selectedProvider.id === 'META' && (
+                      <div className="space-y-4">
+                        <Alert>
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertDescription>
+                            <strong>1. Go to Meta Developer Console</strong>
+                            <br />
+                            Navigate to: <a href="https://developers.facebook.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">developers.facebook.com</a>
+                          </AlertDescription>
+                        </Alert>
+                        <div className="space-y-3">
+                          <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-medium text-blue-700">2</div>
+                            <div>
+                              <p className="font-medium text-gray-900">Find Your WhatsApp Business Account</p>
+                              <p className="text-sm text-gray-600">Select your WABA from the Apps section</p>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-medium text-blue-700">3</div>
+                            <div>
+                              <p className="font-medium text-gray-900">Configure Webhook</p>
+                              <p className="text-sm text-gray-600">Go to Webhooks section → WhatsApp Business Account</p>
+                              <p className="text-sm text-gray-600">Paste the webhook URL above in the "Message" field</p>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-medium text-blue-700">4</div>
+                            <div>
+                              <p className="font-medium text-gray-900">Subscribe to Message Updates</p>
+                              <p className="text-sm text-gray-600">Subscribe to "messages" and "message_deliveries" fields</p>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-medium text-blue-700">5</div>
+                            <div>
+                              <p className="font-medium text-gray-900">Save & Test</p>
+                              <p className="text-sm text-gray-600">Save your webhook configuration</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Twilio Instructions */}
+                    {selectedProvider.id === 'TWILIO' && (
+                      <div className="space-y-4">
+                        <Alert>
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertDescription>
+                            <strong>1. Go to Twilio Console</strong>
+                            <br />
+                            Navigate to: <a href="https://console.twilio.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">console.twilio.com</a>
+                          </AlertDescription>
+                        </Alert>
+                        <div className="space-y-3">
+                          <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                            <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center text-sm font-medium text-red-700">2</div>
+                            <div>
+                              <p className="font-medium text-gray-900">Go to WhatsApp Sandbox</p>
+                              <p className="text-sm text-gray-600">Navigate to: Messaging → WhatsApp → Sandbox</p>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                            <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center text-sm font-medium text-red-700">3</div>
+                            <div>
+                              <p className="font-medium text-gray-900">Configure Webhook</p>
+                              <p className="text-sm text-gray-600">Scroll to "Webhook configuration"</p>
+                              <p className="text-sm text-gray-600">Paste the webhook URL above in both "When a message comes in" and "Status callbacks"</p>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                            <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center text-sm font-medium text-red-700">4</div>
+                            <div>
+                              <p className="font-medium text-gray-900">Save Settings</p>
+                              <p className="text-sm text-gray-600">Click "Save" to apply webhook changes</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* GupShup Instructions */}
+                    {selectedProvider.id === 'GUPSHUP' && (
+                      <div className="space-y-4">
+                        <Alert>
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertDescription>
+                            <strong>1. Go to GupShup Dashboard</strong>
+                            <br />
+                            Navigate to: <a href="https://www.gupshup.io" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">gupshup.io</a>
+                          </AlertDescription>
+                        </Alert>
+                        <div className="space-y-3">
+                          <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                            <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center text-sm font-medium text-purple-700">2</div>
+                            <div>
+                              <p className="font-medium text-gray-900">Access Your App</p>
+                              <p className="text-sm text-gray-600">Select your WhatsApp app from the dashboard</p>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                            <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center text-sm font-medium text-purple-700">3</div>
+                            <div>
+                              <p className="font-medium text-gray-900">Configure Webhook</p>
+                              <p className="text-sm text-gray-600">Go to Settings → Webhook URL</p>
+                              <p className="text-sm text-gray-600">Paste the webhook URL above and save</p>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                            <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center text-sm font-medium text-purple-700">4</div>
+                            <div>
+                              <p className="font-medium text-gray-900">Test Connection</p>
+                              <p className="text-sm text-gray-600">Use the "Test Webhook" button to verify</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 360Dialog Instructions */}
+                    {selectedProvider.id === '360DIALOG' && (
+                      <div className="space-y-4">
+                        <Alert>
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertDescription>
+                            <strong>1. Go to 360Dialog Dashboard</strong>
+                            <br />
+                            Navigate to: <a href="https://360dialog.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">360dialog.com</a>
+                          </AlertDescription>
+                        </Alert>
+                        <div className="space-y-3">
+                          <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-sm font-medium text-green-700">2</div>
+                            <div>
+                              <p className="font-medium text-gray-900">Access Your Partner Account</p>
+                              <p className="text-sm text-gray-600">Log in to your 360Dialog partner account</p>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-sm font-medium text-green-700">3</div>
+                            <div>
+                              <p className="font-medium text-gray-900">Configure Webhook</p>
+                              <p className="text-sm text-gray-600">Go to Settings → Webhooks</p>
+                              <p className="text-sm text-gray-600">Add new webhook with the URL above</p>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-sm font-medium text-green-700">4</div>
+                            <div>
+                              <p className="font-medium text-gray-900">Select Events</p>
+                              <p className="text-sm text-gray-600">Subscribe to message_status, message, and contact events</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <Alert>
+                      <CheckCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        <strong>Why this matters:</strong> The webhook will notify you when messages are delivered, read, or fail.
+                        This ensures you can track message performance and handle failures appropriately in your application.
+                      </AlertDescription>
+                    </Alert>
+                  </CardContent>
+                </Card>
+              )}
+
+              <div className="flex gap-3 pt-6">
+                <Button onClick={() => setShowWebhookInstructions(false)} className="flex-1">
+                  <Check className="h-4 w-4 mr-2" />
+                  Got It! Setup Complete
                 </Button>
               </div>
             </div>

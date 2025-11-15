@@ -1,11 +1,9 @@
 // components/crm/DynamicSidebar.tsx
 import { NavLink, useLocation } from "react-router-dom";
 import {
-  BarChart3, Users, Target, CheckSquare, MessageSquare, Settings,
-  Building, TrendingUp, Calendar, FileText, UserPlus, GitBranch,
-  Quote, DollarSign, Phone, Mail, Activity, FolderOpen, Bell,
-  Search, Sliders, UsersIcon, Shield, Wand2, Volume2, Megaphone,
-  Users2, PenTool, HelpCircle, Database, Menu, Home
+  Users, MessageSquare,
+  Building, UserPlus,
+  Megaphone, Users2, HelpCircle, Database, Home, Settings, Zap
 } from "lucide-react";
 
 import {
@@ -19,7 +17,7 @@ import {
   SidebarMenuItem,
   useSidebar
 } from "@/components/ui/sidebar";
-import { useMenuAccess } from "@/hooks/useMenuAccess";
+import { useAuth } from "@/hooks/use-auth";
 
 // Types for the menu system
 interface MenuItem {
@@ -48,64 +46,235 @@ interface MenuGroup {
 
 // Icon mapping for dynamic menu items
 const iconMap = {
-  'bar-chart-3': BarChart3,
-  'users': Users,
-  'target': Target,
-  'check-square': CheckSquare,
   'message-square': MessageSquare,
-  'building': Building,
-  'trending-up': TrendingUp,
-  'calendar': Calendar,
-  'file-text': FileText,
-  'user-plus': UserPlus,
-  'git-branch': GitBranch,
-  'quote': Quote,
-  'dollar-sign': DollarSign,
-  'phone': Phone,
-  'mail': Mail,
-  'activity': Activity,
-  'folder-open': FolderOpen,
-  'bell': Bell,
-  'sliders': Sliders,
-  'users-icon': UsersIcon,
-  'shield': Shield,
-  'wand-2': Wand2,
-  'volume-2': Volume2,
   'megaphone': Megaphone,
-  'users-2': Users2,
-  'pen-tool': PenTool,
+  'home': Home,
   'database': Database,
-  'menu': Menu,
-  'home': Home
+  'users': Users,
+  'building': Building,
+  'users-2': Users2,
+  'user-plus': UserPlus,
+  'settings': Settings,
+  'zap': Zap
 };
 
 export function DynamicSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
   const collapsed = state === "collapsed";
-  const { userMenu, isLoading, error, getMenuItemsByGroup } = useMenuAccess();
+  const { user } = useAuth();
 
-  // Menu group labels mapping
-  const menuGroupLabels: Record<string, string> = {
-    'MAIN_NAV': 'Main Navigation',
-    'SALES': 'Sales Pipeline',
-    'COMMUNICATIONS': 'Communications',
-    'AI_MARKETING': 'AI Marketing',
-    'SOCIAL_MEDIA': 'Social Media',
-    'BUSINESS_INTEL': 'Business Intelligence',
-    'ADMINISTRATION': 'Administration',
-    'MASTERS': 'Masters Data'
-  };
+  // Check if user has admin role
+  const isAdmin = user?.roles?.includes('ADMIN') || user?.roles?.includes('ADMINISTRATOR');
 
-  if (isLoading) {
-    return (
-      <Sidebar className={`${collapsed ? "w-16" : "w-64"} bg-white border-r border-gray-200 transition-all duration-300 font-sans`}>
-        <div className="flex items-center justify-center h-20">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      </Sidebar>
-    );
-  }
+  // Hardcoded menu structure
+  const menuGroups = [
+    {
+
+      menuCode: 'DASHBOARD',
+      menuName: 'Dashboard',
+      description: 'Overview and insights',
+      icon: 'home',
+      sortOrder: 0,
+      accessibleMenus: [
+        {
+          id: 'dashboard',
+          itemCode: 'DASHBOARD',
+          itemName: 'Dashboard',
+          itemType: 'LINK',
+          url: '/',
+          icon: 'home',
+          sortOrder: 0,
+          requiresPermission: 'READ',
+          menuCode: 'DASHBOARD',
+          menuName: 'Dashboard',
+          parentId: null,
+          status: 'ACTIVE' as const
+        }
+      ]
+    },
+    {
+      menuCode: 'WHATSAPP',
+      menuName: 'WhatsApp',
+      description: 'WhatsApp messaging tools',
+      icon: 'message-square',
+      sortOrder: 1,
+      accessibleMenus: [
+        {
+          id: 'message-templates',
+          itemCode: 'MESSAGE_TEMPLATES',
+          itemName: 'Message Templates',
+          itemType: 'LINK',
+          url: '/whatsapp/templates',
+          icon: 'message-square',
+          sortOrder: 1,
+          requiresPermission: 'READ',
+          menuCode: 'WHATSAPP',
+          menuName: 'WhatsApp',
+          parentId: null,
+          status: 'ACTIVE' as const
+        },
+        {
+          id: 'campaigns',
+          itemCode: 'CAMPAIGNS',
+          itemName: 'Campaigns',
+          itemType: 'LINK',
+          url: '/campaigns',
+          icon: 'megaphone',
+          sortOrder: 2,
+          requiresPermission: 'READ',
+          menuCode: 'WHATSAPP',
+          menuName: 'WhatsApp',
+          parentId: null,
+          status: 'ACTIVE' as const
+        },
+        {
+          id: 'whatsapp-setup',
+          itemCode: 'WHATSAPP_SETUP',
+          itemName: 'WhatsApp Business Setup',
+          itemType: 'LINK',
+          url: '/whatsapp/setup',
+          icon: 'home',
+          sortOrder: 3,
+          requiresPermission: 'READ',
+          menuCode: 'WHATSAPP',
+          menuName: 'WhatsApp',
+          parentId: null,
+          status: 'ACTIVE' as const
+        },
+        {
+          id: 'api-guide',
+          itemCode: 'API_GUIDE',
+          itemName: 'API Guide',
+          itemType: 'LINK',
+          url: '/whatsapp/api-guide',
+          icon: 'database',
+          sortOrder: 4,
+          requiresPermission: 'READ',
+          menuCode: 'WHATSAPP',
+          menuName: 'WhatsApp',
+          parentId: null,
+          status: 'ACTIVE' as const
+        },
+        {
+          id: 'webhook',
+          itemCode: 'WEBHOOK',
+          itemName: 'Webhook',
+          itemType: 'LINK',
+          url: '/whatsapp/webhook-messages',
+          icon: 'zap',
+          sortOrder: 5,
+          requiresPermission: 'READ',
+          menuCode: 'WHATSAPP',
+          menuName: 'WhatsApp',
+          parentId: null,
+          status: 'ACTIVE' as const
+        }
+      ]
+    },
+    {
+      menuCode: 'CRM',
+      menuName: 'CRM',
+      description: 'Customer relationship management',
+      icon: 'users',
+      sortOrder: 2,
+      accessibleMenus: [
+        {
+          id: 'contacts',
+          itemCode: 'CONTACTS',
+          itemName: 'Contacts',
+          itemType: 'LINK',
+          url: '/contacts',
+          icon: 'users',
+          sortOrder: 1,
+          requiresPermission: 'READ',
+          menuCode: 'CRM',
+          menuName: 'CRM',
+          parentId: null,
+          status: 'ACTIVE' as const
+        },
+        {
+          id: 'companies',
+          itemCode: 'COMPANIES',
+          itemName: 'Companies',
+          itemType: 'LINK',
+          url: '/companies',
+          icon: 'building',
+          sortOrder: 2,
+          requiresPermission: 'READ',
+          menuCode: 'CRM',
+          menuName: 'CRM',
+          parentId: null,
+          status: 'ACTIVE' as const
+        }
+      ]
+    },
+    {
+      menuCode: 'SYSTEM',
+      menuName: 'System Settings',
+      description: 'System administration',
+      icon: 'settings',
+      sortOrder: 3,
+      accessibleMenus: [
+        ...(isAdmin ? [{
+          id: 'team-members',
+          itemCode: 'TEAM_MEMBERS',
+          itemName: 'Team Members',
+          itemType: 'LINK',
+          url: '/team/members',
+          icon: 'users-2',
+          sortOrder: 1,
+          requiresPermission: 'READ',
+          menuCode: 'SYSTEM',
+          menuName: 'System Settings',
+          parentId: null,
+          status: 'ACTIVE' as const
+        }] : []),
+        ...(isAdmin ? [{
+          id: 'list-values',
+          itemCode: 'LIST_VALUES',
+          itemName: 'List Values',
+          itemType: 'LINK',
+          url: '/masters/list-values',
+          icon: 'database',
+          sortOrder: 2,
+          requiresPermission: 'READ',
+          menuCode: 'SYSTEM',
+          menuName: 'System Settings',
+          parentId: null,
+          status: 'ACTIVE' as const
+        }] : []),
+        {
+          id: 'profile',
+          itemCode: 'PROFILE',
+          itemName: 'Profile',
+          itemType: 'LINK',
+          url: '/profile',
+          icon: 'user-plus',
+          sortOrder: 3,
+          requiresPermission: 'READ',
+          menuCode: 'SYSTEM',
+          menuName: 'System Settings',
+          parentId: null,
+          status: 'ACTIVE' as const
+        },
+        {
+          id: 'change-password',
+          itemCode: 'CHANGE_PASSWORD',
+          itemName: 'Change Password',
+          itemType: 'LINK',
+          url: '/change-password',
+          icon: 'settings',
+          sortOrder: 4,
+          requiresPermission: 'READ',
+          menuCode: 'SYSTEM',
+          menuName: 'System Settings',
+          parentId: null,
+          status: 'ACTIVE' as const
+        }
+      ]
+    }
+  ];
 
   return (
     <Sidebar className={`${collapsed ? "w-16" : "w-64"} bg-white border-r border-gray-200 transition-all duration-300 font-sans`} collapsible="icon">
@@ -150,22 +319,22 @@ export function DynamicSidebar() {
           </div>
         )}
 
-        {/* Render menu groups dynamically */}
-        {userMenu?.map((menuGroup: MenuGroup) => {
-          const menuItems = getMenuItemsByGroup(menuGroup.menuCode);
+        {/* Render menu groups */}
+        {menuGroups.map((menuGroup: MenuGroup) => {
+          const menuItems = menuGroup.accessibleMenus.filter(item => item.status === 'ACTIVE');
 
           if (menuItems.length === 0) return null;
 
           return (
             <SidebarGroup key={menuGroup.menuCode}>
               <SidebarGroupLabel className={`${collapsed ? "sr-only" : "px-0 text-sm font-normal text-gray-600 mb-4"}`}>
-                {menuGroupLabels[menuGroup.menuCode] || menuGroup.menuName}
+                {menuGroup.menuName}
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu className="space-y-2">
                   {menuItems
-                    .sort((a: MenuItem, b: MenuItem) => a.sortOrder - b.sortOrder)
-                    .map((item: MenuItem) => {
+                    .sort((a, b) => a.sortOrder - b.sortOrder)
+                    .map((item) => {
                       const IconComponent = iconMap[item.icon as keyof typeof iconMap] || HelpCircle;
 
                       return (
@@ -209,28 +378,7 @@ export function DynamicSidebar() {
           );
         })}
 
-        {/* Show subscription issue message */}
-        {error === 'SUBSCRIPTION_ISSUE' && !isLoading && (
-          <div className="px-6 py-4 mx-4 my-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div className="flex items-center justify-center mb-2">
-              <svg className="w-5 h-5 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-              <span className="text-sm font-medium text-yellow-800">Subscription Issue</span>
-            </div>
-            <p className="text-xs text-yellow-700 text-center leading-relaxed">
-              Your subscription is inactive. Limited access available.
-            </p>
-          </div>
-        )}
 
-        {/* Show message if no menus available */}
-        {userMenu?.length === 0 && !isLoading && error !== 'SUBSCRIPTION_ISSUE' && (
-          <div className="px-6 py-4 text-center text-gray-500">
-            <p className="text-sm">No menu items available</p>
-            <p className="text-xs">Contact administrator for access</p>
-          </div>
-        )}
       </SidebarContent>
 
       {/* Footer */}

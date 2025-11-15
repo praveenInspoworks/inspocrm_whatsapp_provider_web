@@ -4,8 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Mail, ArrowLeft, CheckCircle, Shield, Sparkles } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/hooks/use-toast";
+import { authService } from "@/services/authService";
 import { useNavigate } from "react-router-dom";
 
 function ForgotPasswordForm() {
@@ -13,8 +12,6 @@ function ForgotPasswordForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const { resetPassword } = useAuth();
-  const { toast } = useToast();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -23,25 +20,9 @@ function ForgotPasswordForm() {
     setError("");
 
     try {
-      // Use the new common password reset API
-      const response = await fetch('/api/v1/auth/common/password/reset/request', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to send reset email');
-      }
-
+      // Use the unified authService for password reset
+      await authService.forgotPassword({ email });
       setSuccess(true);
-      toast({
-        title: "Reset Email Sent",
-        description: "Check your email for password reset instructions.",
-      });
     } catch (err: any) {
       setError(err.message || "Failed to send reset email. Please try again.");
     } finally {
