@@ -22,8 +22,8 @@ export const useSessionTimeout = (options: SessionTimeoutOptions = {}) => {
   const [showWarning, setShowWarning] = useState(false);
   const [remainingTime, setRemainingTime] = useState(0);
 
-  const timeoutRef = useRef<NodeJS.Timeout>();
-  const warningRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const warningRef = useRef<NodeJS.Timeout | null>(null);
   const lastActivityRef = useRef<number>(Date.now());
 
   // Reset the timeout timer
@@ -35,9 +35,11 @@ export const useSessionTimeout = (options: SessionTimeoutOptions = {}) => {
     // Clear existing timers
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
     if (warningRef.current) {
       clearTimeout(warningRef.current);
+      warningRef.current = null;
     }
 
     // Set warning timer
@@ -56,15 +58,17 @@ export const useSessionTimeout = (options: SessionTimeoutOptions = {}) => {
 
   // Handle session timeout
   const handleTimeout = useCallback(async () => {
+    // Prevent multiple calls
+    if (timeoutRef.current === null) return; // Already handled
+    timeoutRef.current = null; // Mark as handled
+
     try {
       console.log('🔒 Session expired due to inactivity, logging out...');
 
       // Clear timers
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
       if (warningRef.current) {
         clearTimeout(warningRef.current);
+        warningRef.current = null;
       }
 
       // Call custom timeout handler if provided
@@ -134,9 +138,11 @@ export const useSessionTimeout = (options: SessionTimeoutOptions = {}) => {
 
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
       }
       if (warningRef.current) {
         clearTimeout(warningRef.current);
+        warningRef.current = null;
       }
     };
   }, [handleActivity, resetTimer]);

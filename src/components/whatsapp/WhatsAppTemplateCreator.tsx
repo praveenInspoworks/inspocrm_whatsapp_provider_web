@@ -496,21 +496,24 @@ export default function WhatsAppTemplateCreator() {
       }
 
       // Validate required credentials based on provider
-      const provider = accountDetails.provider || detectProviderFromCredentials(accountDetails);
       const missingCredentials = [];
+
+      // Detect provider from credentials
+      const provider = detectProviderFromCredentials(accountDetails);
 
       switch (provider) {
         case 'META':
           if (!accountDetails.accessToken || accountDetails.accessToken.length < 10) {
             missingCredentials.push("Access Token");
           }
-          if (!accountDetails.phoneNumberId) {
-            missingCredentials.push("Phone Number ID");
+          if (!accountDetails.phoneNumberId && !accountDetails.displayPhoneNumber) {
+            missingCredentials.push("Phone Number ID or Display Phone Number");
           }
           break;
         case 'TWILIO':
-          if (!accountDetails.accountSid || !accountDetails.accountSid.startsWith('AC')) {
-            missingCredentials.push("Account SID");
+          // For Twilio accounts, check if we have either accountSid or valid accountId format
+          if (!accountDetails.accountSid && !accountDetails.accountId?.startsWith('AC')) {
+            missingCredentials.push("Account SID or valid Account ID");
           }
           if (!accountDetails.accessToken) {
             missingCredentials.push("Auth Token");
@@ -533,8 +536,9 @@ export default function WhatsAppTemplateCreator() {
           }
           break;
         default:
-          if (!accountDetails.accessToken && !accountDetails.apiKey) {
-            missingCredentials.push("API Credentials");
+          // For unknown providers, require at least one API credential
+          if (!accountDetails.accessToken && !accountDetails.apiKey && !accountDetails.accountId) {
+            missingCredentials.push("API Credentials (access token, API key, or account ID)");
           }
       }
 
@@ -701,6 +705,7 @@ export default function WhatsAppTemplateCreator() {
         })
       };
 
+      console.log('Twilio WhatsApp Campaign Payload:', JSON.stringify(campaignData, null, 2));
       await post('/api/v1/whatsapp/campaigns', campaignData);
       toast({
         title: "Messages sent successfully",

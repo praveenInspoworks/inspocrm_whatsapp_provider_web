@@ -193,6 +193,19 @@ export interface OnboardingProgressResponse {
 
 export const authService = {
 
+  // ===== UNIFIED PASSWORD MANAGEMENT =====
+
+  // Unified forgot password for both admin and member users
+  async forgotPassword(request: ForgotPasswordRequest): Promise<void> {
+    try {
+      await post('/api/v1/auth/common/password/reset/request', request);
+      toast.success('Password reset instructions sent to your email');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to send reset instructions');
+      throw error;
+    }
+  },
+
   // ===== TENANT SEARCH =====
 
   // Search tenants by company name or tenant code (using OrganizationService)
@@ -282,7 +295,12 @@ export const authService = {
   // Tenant Login
   async tenantLogin(credentials: TenantLoginRequest): Promise<{ success: boolean; message: string; data?: TenantLoginResponse }> {
     try {
-      const response = await post('/api/v1/auth/signin', credentials);
+      // Map username to email for unified login endpoint
+      const loginRequest = {
+        email: credentials.username,
+        password: credentials.password
+      };
+      const response = await post('/api/v1/auth/login', loginRequest);
 
       if (response) {
         // Store tenant tokens

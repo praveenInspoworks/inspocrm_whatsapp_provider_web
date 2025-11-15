@@ -5,33 +5,20 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Eye, EyeOff, Mail, Lock, Building, Sparkles, TrendingUp, Target, Zap, Shield, BarChart3, Rocket, Star, Users } from "lucide-react";
 import { AILoadingSpinner } from "@/components/ui/ai-loading-spinner";
-import { useAuth } from "@/hooks/use-auth";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/use-auth";
 
 function TenantLoginForm() {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [animatedElements, setAnimatedElements] = useState<Array<{id: number, x: number, y: number, delay: number, icon: string}>>([]);
+  const [animatedElements, setAnimatedElements] = useState<Array<{id: number, x: number, y: number, delay: number, icon: string}>[]>([]);
 
-  // Safely use auth hook with error boundary
-  let authData;
-  try {
-    authData = useAuth();
-  } catch (error) {
-    // During hot reloading, useAuth might not be available
-    console.warn('useAuth not available during component initialization');
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
 
-  const { login } = authData;
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   // Generate floating CRM-themed elements - memoized to prevent re-renders
   const animatedElementsRef = useRef<Array<{id: number, x: number, y: number, delay: number, icon: string}>>([]);
@@ -61,9 +48,13 @@ function TenantLoginForm() {
     setError("");
 
     try {
-      console.log('🔐 Attempting tenant admin login:', username);
-      await login(username, password);
-      console.log('✅ Tenant admin login successful');
+      console.log('🔐 Attempting unified login:', email);
+
+      // Use useAuth hook's login method to properly update AuthProvider context
+      await login(email, password);
+
+      // Navigation is handled by useAuth hook
+      navigate('/');
     } catch (err: any) {
       console.error('❌ Login error:', err);
       setError(err.message || "Login failed. Please try again.");
@@ -215,23 +206,26 @@ function TenantLoginForm() {
                   {/* Login Form */}
                   <div className="space-y-6">
                     <div className="space-y-3 group">
-                      <Label htmlFor="username" className="flex items-center text-sm font-semibold text-gray-700 group-hover:text-indigo-600 transition-colors duration-300">
+                      <Label htmlFor="email" className="flex items-center text-sm font-semibold text-gray-700 group-hover:text-indigo-600 transition-colors duration-300">
                         <Mail className="w-4 h-4 mr-2 text-indigo-500" />
-                        Admin Username <span className="text-red-500 ml-1">*</span>
+                        Email Address <span className="text-red-500 ml-1">*</span>
                       </Label>
                       <div className="relative">
                         <Input
-                          id="username"
-                          type="text"
-                          placeholder="Enter your admin username"
-                          value={username}
-                          onChange={(e) => setUsername(e.target.value)}
+                          id="email"
+                          type="email"
+                          placeholder="admin@yourcompany.com"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
                           className={`${inputClasses} pl-12 transition-all duration-300 group-hover:border-indigo-400 group-focus-within:ring-indigo-200 h-12`}
                           required
-                          autoComplete="username"
+                          autoComplete="email"
                         />
                         <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-hover:text-indigo-500 transition-colors duration-300" />
                       </div>
+                      <p className="text-xs text-gray-500">
+                        Your organization will be detected from your email domain
+                      </p>
                     </div>
 
                     <div className="space-y-3 group">
