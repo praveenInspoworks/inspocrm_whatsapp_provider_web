@@ -1,0 +1,145 @@
+# Third-Party Software Notices
+
+This file contains attributions for open-source software used in HotKup.
+
+## Core Dependencies
+
+### React
+- **License:** MIT
+- **Copyright:** Facebook, Inc. and its affiliates
+- **Repository:** https://github.com/facebook/react
+
+### React DOM
+- **License:** MIT
+- **Copyright:** Facebook, Inc. and its affiliates
+- **Repository:** https://github.com/facebook/react
+
+### React Router
+- **License:** MIT
+- **Copyright:** React Training
+- **Repository:** https://github.com/remix-run/react-router
+
+### TypeScript
+- **License:** Apache-2.0
+- **Copyright:** Microsoft Corporation
+- **Repository:** https://github.com/Microsoft/TypeScript
+
+### Vite
+- **License:** MIT
+- **Copyright:** Evan You
+- **Repository:** https://github.com/vitejs/vite
+
+## UI Component Libraries
+
+### Radix UI
+- **License:** MIT
+- **Copyright:** WorkOS
+- **Repository:** https://github.com/radix-ui/primitives
+- **Components Used:**
+  - @radix-ui/react-accordion
+  - @radix-ui/react-alert-dialog
+  - @radix-ui/react-avatar
+  - @radix-ui/react-checkbox
+  - @radix-ui/react-dialog
+  - @radix-ui/react-dropdown-menu
+  - @radix-ui/react-label
+  - @radix-ui/react-popover
+  - @radix-ui/react-progress
+  - @radix-ui/react-select
+  - @radix-ui/react-separator
+  - @radix-ui/react-slider
+  - @radix-ui/react-switch
+  - @radix-ui/react-tabs
+  - @radix-ui/react-toast
+  - @radix-ui/react-tooltip
+  - And other Radix UI components
+
+### Lucide React
+- **License:** ISC
+- **Copyright:** Lucide Contributors
+- **Repository:** https://github.com/lucide-icons/lucide
+
+### TailwindCSS
+- **License:** MIT
+- **Copyright:** Tailwind Labs, Inc.
+- **Repository:** https://github.com/tailwindlabs/tailwindcss
+
+## Form & Validation
+
+### React Hook Form
+- **License:** MIT
+- **Copyright:** Beier (Bill) Luo
+- **Repository:** https://github.com/react-hook-form/react-hook-form
+
+### Zod
+- **License:** MIT
+- **Copyright:** Colin McDonnell
+- **Repository:** https://github.com/colinhacks/zod
+
+## Data & API
+
+### Axios
+- **License:** MIT
+- **Copyright:** Matt Zabriskie
+- **Repository:** https://github.com/axios/axios
+
+### TanStack Query (React Query)
+- **License:** MIT
+- **Copyright:** Tanner Linsley
+- **Repository:** https://github.com/TanStack/query
+
+## Utilities
+
+### date-fns
+- **License:** MIT
+- **Copyright:** Sasha Koss
+- **Repository:** https://github.com/date-fns/date-fns
+
+### XLSX
+- **License:** Apache-2.0
+- **Copyright:** SheetJS LLC
+- **Repository:** https://github.com/SheetJS/sheetjs
+
+### Recharts
+- **License:** MIT
+- **Copyright:** Recharts Group
+- **Repository:** https://github.com/recharts/recharts
+
+## Development Tools
+
+### ESLint
+- **License:** MIT
+- **Copyright:** ESLint Contributors
+- **Repository:** https://github.com/eslint/eslint
+
+### PostCSS
+- **License:** MIT
+- **Copyright:** Andrey Sitnik
+- **Repository:** https://github.com/postcss/postcss
+
+### Sass
+- **License:** MIT
+- **Copyright:** Natalie Weizenbaum, Chris Eppstein, and contributors
+- **Repository:** https://github.com/sass/sass
+
+---
+
+## Full License Texts
+
+For the complete text of each license, please refer to:
+- MIT License: https://opensource.org/licenses/MIT
+- Apache-2.0 License: https://www.apache.org/licenses/LICENSE-2.0
+- ISC License: https://opensource.org/licenses/ISC
+
+---
+
+**Note:** This is not an exhaustive list. For a complete list of all dependencies and their licenses, run:
+```bash
+npm list --depth=0
+```
+
+Or use a license checker:
+```bash
+npx license-checker --summary
+```
+

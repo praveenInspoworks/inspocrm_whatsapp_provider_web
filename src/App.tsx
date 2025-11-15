@@ -20,6 +20,7 @@ import { ChangePasswordForm } from "./components/auth/ChangePasswordForm";
 import { TenantSignupForm } from "./components/auth/TenantSignupForm";
 import { EmailVerificationForm } from "./components/auth/EmailVerificationForm";
 import { SetPasswordForm } from "./components/auth/SetPasswordForm";
+import ForgotPasswordForm from "./components/auth/ForgotPasswordForm";
 import { CompanyProfileSetup } from "./components/onboarding/CompanyProfileSetup";
 import { BillingSetupForm } from "./components/onboarding/BillingSetupForm";
 import ListValueComponent from "./components/masters/ListValueComponent";
@@ -34,12 +35,14 @@ import { WhatsAppCredentialsManager } from "./components/whatsapp/WhatsAppCreden
 import { WhatsAppCampaignDashboard } from "./components/whatsapp/WhatsAppCampaignDashboard";
 import { WhatsAppTemplateList } from "./components/whatsapp/WhatsAppTemplateList";
 import UserProfilePage from "./components/auth/UserProfilePage";
-import ForgotPasswordForm from "./components/auth/ForgotPasswordForm";
 import WhatsAppTemplateCreator from "./components/whatsapp/WhatsAppTemplateCreator";
 import WhatsAppAnalyticsDashboard from "./components/whatsapp/WhatsAppAnalyticsDashboard";
 import WhatsAppWebhookMessages from "./components/whatsapp/WhatsAppWebhookMessages";
 import { WhatsAppApiGuide } from "./components/whatsapp/WhatsAppApiGuide";
 import TeamManagement from "./components/crm/team";
+import { SubscriptionManagement } from "./components/subscription/SubscriptionManagement";
+import { DataManagement } from "./components/gdpr/DataManagement";
+import { TrialBanner } from "./components/subscription/TrialBanner";
 
 // Placeholder components for routes that need to be created
 const Dashboard = () => <WhatsAppCampaignDashboard />;
@@ -113,6 +116,8 @@ const App = () => {
               <Sonner />
               {/* Session Timeout Manager */}
               <SessionTimeoutManager />
+              {/* Trial Banner - Shows for trial users */}
+              <TrialBanner />
               <Routes>
                 {/* Authentication Routes */}
                 <Route path="/login" element={<TenantLoginForm />} />
@@ -172,6 +177,10 @@ const App = () => {
                   {/* User Profile & Account */}
                   <Route path="profile" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} />
                   <Route path="change-password" element={<ProtectedRoute><ChangePasswordForm /></ProtectedRoute>} />
+
+                  {/* Subscription & Billing */}
+                  <Route path="subscription" element={<ProtectedRoute><SubscriptionManagement /></ProtectedRoute>} />
+                  <Route path="data-management" element={<ProtectedRoute><DataManagement /></ProtectedRoute>} />
 
                   {/* Tenant Onboarding Routes */}
                   <Route path="company-profile" element={<ProtectedRoute><CompanyProfileSetup /></ProtectedRoute>} />

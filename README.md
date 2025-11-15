@@ -1,8 +1,10 @@
-# InspoCRM - Complete Tenant Onboarding Implementation
+# HotKup - WhatsApp Provider Platform
 
 ## 🚀 Overview
 
-This is a **complete, production-ready** tenant onboarding implementation for InspoCRM, featuring a full-stack solution with React frontend and Java Spring Boot backend. The implementation follows enterprise-grade security standards and provides a seamless user experience for tenant registration, email verification, password setup, and login.
+**HotKup** is a **complete, production-ready** WhatsApp Business API provider platform, featuring a full-stack solution with React frontend and Java Spring Boot backend. The implementation follows enterprise-grade security standards and provides a seamless user experience for tenant registration, email verification, password setup, and login.
+
+**HotKup** enables businesses to connect to WhatsApp Business API through multiple providers (Meta, Twilio, Gupshup, 360Dialog) and manage their WhatsApp messaging, campaigns, and CRM functionality in one unified platform.
 
 ## 📋 Table of Contents
 
@@ -16,6 +18,7 @@ This is a **complete, production-ready** tenant onboarding implementation for In
 8. [Development Setup](#development-setup)
 9. [Testing](#testing)
 10. [Troubleshooting](#troubleshooting)
+11. [License](#license)
 
 ## 🚀 Quick Start
 
@@ -27,15 +30,15 @@ This is a **complete, production-ready** tenant onboarding implementation for In
 
 ### 1. Backend Setup
 ```bash
-cd inspo-crm-api
+cd hotkup-api
 
 # Configure environment variables
 cp src/main/resources/application.yml.example src/main/resources/application.yml
 # Edit application.yml with your database and email settings
 
 # Start PostgreSQL and Redis (using Docker)
-docker run -d --name postgres-inspocrm -e POSTGRES_DB=db_inspocrm -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:15
-docker run -d --name redis-inspocrm -p 6379:6379 redis:7-alpine
+docker run -d --name postgres-hotkup -e POSTGRES_DB=db_hotkup -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:15
+docker run -d --name redis-hotkup -p 6379:6379 redis:7-alpine
 
 # Build and run backend
 mvn clean install
@@ -44,7 +47,7 @@ mvn spring-boot:run
 
 ### 2. Frontend Setup
 ```bash
-cd inspo-crm-web
+cd hotkup-web
 
 # Install dependencies
 npm install
@@ -58,8 +61,8 @@ npm run dev
 
 ### 3. Access Application
 - **Frontend**: http://localhost:3002
-- **Backend API**: http://localhost:8081/inspocrm
-- **API Documentation**: http://localhost:8081/inspocrm/swagger-ui.html
+- **Backend API**: http://localhost:8081/hotkup (or your configured API path)
+- **API Documentation**: http://localhost:8081/hotkup/swagger-ui.html
 
 ## 🏗️ Architecture Overview
 
@@ -72,20 +75,24 @@ npm run dev
 
 ### Project Structure
 ```
-inspo-crm-web/          # React frontend
+hotkup-web/          # React frontend
 ├── src/
 │   ├── components/auth/     # Authentication components
 │   │   ├── TenantSignupForm.tsx    # Main signup form
 │   │   ├── EmailVerificationForm.tsx # Email verification
 │   │   ├── SetPasswordForm.tsx     # Password setup
-│   │   └── LoginForm.tsx           # Login form
+│   │   └── TenantLoginForm.tsx     # Tenant admin login
+│   ├── components/whatsapp/  # WhatsApp integration components
+│   │   ├── WhatsAppBusinessSetup.tsx  # Provider setup
+│   │   ├── WhatsAppCampaignDashboard.tsx  # Campaign management
+│   │   └── WhatsAppTemplateCreator.tsx  # Template management
 │   ├── services/
 │   │   ├── onboardingService.ts    # Onboarding API calls
 │   │   └── authService.ts          # Authentication service
 │   └── lib/validations.ts          # Form validation schemas
 
-inspo-crm-api/          # Java Spring Boot backend
-├── src/main/java/com/inspocrm/api/
+hotkup-api/          # Java Spring Boot backend
+├── src/main/java/com/hotkup/api/
 │   ├── platform/controller/        # REST controllers
 │   ├── platform/service/           # Business logic services
 │   ├── platform/service/impl/      # Service implementations
@@ -537,4 +544,20 @@ Your InspoCRM tenant is now fully set up and ready for use. The implementation i
 - ✅ **Production-ready security** features
 - ✅ **Comprehensive documentation** and testing guides
 
-**Welcome to InspoCRM!** 🚀
+**Welcome to HotKup!** 🚀
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+### Third-Party Licenses
+
+This project uses open-source dependencies. For a complete list of third-party software and their licenses, see [NOTICES.txt](NOTICES.txt).
+
+All dependencies are:
+- ✅ Open-source
+- ✅ Free for commercial use
+- ✅ Permissive licenses (MIT, Apache-2.0, ISC)
+- ✅ No paid licenses required
+
+For more information about legal compliance, see [LEGAL_COMPLIANCE_AUDIT.md](LEGAL_COMPLIANCE_AUDIT.md).

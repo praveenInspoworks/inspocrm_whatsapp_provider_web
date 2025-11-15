@@ -1,46 +1,20 @@
-import { useState, useEffect, useRef, memo } from "react";
+import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Eye, EyeOff, Mail, Lock, Building, Sparkles, TrendingUp, Target, Zap, Shield, BarChart3, Rocket, Star, Users } from "lucide-react";
-import { AILoadingSpinner } from "@/components/ui/ai-loading-spinner";
-import { useNavigate } from "react-router-dom";
+import { Eye, EyeOff, Mail, Lock, Loader2, Shield, Zap, Users, BarChart3 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
-function TenantLoginForm() {
+export default function TenantLoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [animatedElements, setAnimatedElements] = useState<Array<{id: number, x: number, y: number, delay: number, icon: string}>[]>([]);
-
-
   const navigate = useNavigate();
   const { login } = useAuth();
-
-  // Generate floating CRM-themed elements - memoized to prevent re-renders
-  const animatedElementsRef = useRef<Array<{id: number, x: number, y: number, delay: number, icon: string}>>([]);
-
-  useEffect(() => {
-    if (animatedElementsRef.current.length === 0) {
-      const elements = [];
-      const icons = ['Users', 'Target', 'TrendingUp', 'Zap', 'Shield', 'BarChart3'];
-
-      for (let i = 0; i < 15; i++) {
-        elements.push({
-          id: i,
-          x: Math.random() * 100,
-          y: Math.random() * 100,
-          delay: Math.random() * 3,
-          icon: icons[Math.floor(Math.random() * icons.length)]
-        });
-      }
-      animatedElementsRef.current = elements;
-      setAnimatedElements(elements);
-    }
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,322 +22,248 @@ function TenantLoginForm() {
     setError("");
 
     try {
-      console.log('🔐 Attempting unified login:', email);
-
-      // Use useAuth hook's login method to properly update AuthProvider context
       await login(email, password);
-
-      // Navigation is handled by useAuth hook
-      navigate('/');
+      navigate("/");
     } catch (err: any) {
-      console.error('❌ Login error:', err);
-      setError(err.message || "Login failed. Please try again.");
+      setError(err.message || "Invalid email or password. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Render icon based on string name
-  const renderIcon = (iconName: string) => {
-    const iconProps = { className: "w-8 h-8 text-indigo-300 opacity-30" };
-    switch (iconName) {
-      case 'Users': return <Users {...iconProps} />;
-      case 'Target': return <Target {...iconProps} />;
-      case 'TrendingUp': return <TrendingUp {...iconProps} />;
-      case 'Zap': return <Zap {...iconProps} />;
-      case 'Shield': return <Shield {...iconProps} />;
-      case 'BarChart3': return <BarChart3 {...iconProps} />;
-      default: return <Users {...iconProps} />;
-    }
-  };
-
-  const inputClasses = "text-sm transition-all duration-300 border-2 border-gray-200 focus:border-indigo-500 rounded-xl hover:shadow-lg focus:ring-4 focus:ring-indigo-100";
-
   return (
-    <div className="h-screen bg-white flex overflow-hidden">
-      {/* Left Side - Brand & Info */}
-      <div className="flex-1 h-screen hidden lg:block">
-        <div className="w-full h-full bg-gradient-to-br from-[#006AFF] to-blue-700 relative overflow-hidden flex items-center justify-center p-4 lg:p-8">
-          {/* Animated Background Elements */}
-          <div className="absolute inset-0 overflow-hidden">
-            {/* Floating circles */}
-            {[...Array(12)].map((_, i) => (
-              <div
-                key={i}
-                className="absolute rounded-full bg-white/10 animate-float"
-                style={{
-                  width: `${Math.random() * 100 + 50}px`,
-                  height: `${Math.random() * 100 + 50}px`,
-                  left: `${Math.random() * 100}%`,
-                  top: `${Math.random() * 100}%`,
-                  animationDelay: `${Math.random() * 5}s`,
-                  animationDuration: `${15 + Math.random() * 10}s`
-                }}
-              />
-            ))}
-          </div>
+    <div className="min-h-screen flex">
+      {/* Left Side - Branding */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 relative overflow-hidden">
+        <div className="absolute inset-0 bg-black/10"></div>
+        
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-20 left-20 w-72 h-72 bg-white rounded-full mix-blend-overlay filter blur-3xl"></div>
+          <div className="absolute bottom-20 right-20 w-96 h-96 bg-white rounded-full mix-blend-overlay filter blur-3xl"></div>
+        </div>
 
-          {/* Main Content */}
-          <div className="relative z-10 text-center text-white max-w-md w-full">
-            {/* Logo/Brand */}
-            <div className="mb-8 animate-fade-in">
+        {/* Content */}
+        <div className="relative z-10 flex flex-col justify-center items-center text-white p-12 w-full">
+          <div className="max-w-md">
+            {/* Logo */}
+            <div className="mb-8">
+              <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6 border border-white/30">
+                <svg
+                  className="w-8 h-8 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  />
+                </svg>
+              </div>
               <h1 className="text-4xl font-bold mb-2">HotKup</h1>
               <p className="text-blue-100 text-lg">WhatsApp Provider Platform</p>
             </div>
 
-            {/* Central Icon */}
-            <div className="mb-8 animate-fade-in" style={{ animationDelay: '0.2s' }}>
-              <div className="w-24 h-24 bg-white/20 rounded-2xl flex items-center justify-center mx-auto backdrop-blur-sm border border-white/30">
-                <Shield className="w-12 h-12 text-white" />
+            {/* Features */}
+            <div className="space-y-6 mb-8">
+              <div className="flex items-start space-x-4">
+                <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0 border border-white/30">
+                  <Zap className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg mb-1">Fast & Reliable</h3>
+                  <p className="text-blue-100 text-sm">Lightning-fast messaging with 99.9% uptime guarantee</p>
+                </div>
+              </div>
+              <div className="flex items-start space-x-4">
+                <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0 border border-white/30">
+                  <Shield className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg mb-1">Secure by Default</h3>
+                  <p className="text-blue-100 text-sm">Enterprise-grade security and data protection</p>
+                </div>
+              </div>
+              <div className="flex items-start space-x-4">
+                <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0 border border-white/30">
+                  <Users className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg mb-1">Team Collaboration</h3>
+                  <p className="text-blue-100 text-sm">Manage your team and workflows seamlessly</p>
+                </div>
               </div>
             </div>
 
-            {/* Main Description */}
-            <div className="mb-8 animate-fade-in" style={{ animationDelay: '0.4s' }}>
-              <h2 className="text-2xl font-bold mb-3">Admin Portal</h2>
-              <p className="text-blue-100 leading-relaxed">
-                Secure administrative access to manage your organization's HotKup WhatsApp provider instance.
-              </p>
-            </div>
-
-
-
-            {/* Trust Indicators */}
-            <div className="mt-8 pt-6 border-t border-white/20 animate-fade-in" style={{ animationDelay: '0.8s' }}>
-              <div className="flex justify-center space-x-6 text-blue-100 text-sm">
-                <div className="flex items-center space-x-1">
-                  <Shield className="w-4 h-4" />
-                  <span>Secure</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <BarChart3 className="w-4 h-4" />
-                  <span>Reliable</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <Users className="w-4 h-4" />
-                  <span>Support</span>
-                </div>
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-4 pt-8 border-t border-white/20">
+              <div className="text-center">
+                <div className="text-2xl font-bold">500+</div>
+                <div className="text-blue-200 text-xs">Active Users</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold">99.9%</div>
+                <div className="text-blue-200 text-xs">Uptime</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold">24/7</div>
+                <div className="text-blue-200 text-xs">Support</div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Right Side - Form */}
-      <div className="flex-1 flex items-center justify-center p-4 lg:p-8 bg-gray-50 h-screen w-full overflow-y-auto">
-        <div className="w-full max-w-md lg:max-w-lg">
-          {/* Header Section */}
-          <div className="text-center mb-12 animate-fade-in">
-            <h1 className="text-4xl lg:text-5xl font-black bg-gradient-to-r from-slate-600 via-blue-700 to-purple-800 bg-clip-text text-transparent mb-4 leading-tight">
-              Tenant Admin Login
-            </h1>
+      {/* Right Side - Login Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-6 lg:p-12 bg-gray-50">
+        <div className="w-full max-w-md">
+          {/* Mobile Logo */}
+          <div className="lg:hidden text-center mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4">
+              <svg
+                className="w-8 h-8 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                />
+              </svg>
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome back</h1>
+            <p className="text-gray-600">Sign in to your account</p>
+          </div>
 
-            <div className="space-y-3">
-              <p className="text-xl lg:text-2xl text-gray-800 font-bold">
-                Administrative Access Portal
+          {/* Desktop Header */}
+          <div className="hidden lg:block mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome back</h1>
+            <p className="text-gray-600">Sign in to your account to continue</p>
+          </div>
+
+          {/* Login Card */}
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Email Field */}
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+                  Email address
+                </Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@company.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10 h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    required
+                    autoComplete="email"
+                  />
+                </div>
+              </div>
+
+              {/* Password Field */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password" className="text-sm font-medium text-gray-700">
+                    Password
+                  </Label>
+                  <Link
+                    to="/forgot-password"
+                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10 pr-10 h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    required
+                    autoComplete="current-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Error Message */}
+              {error && (
+                <Alert variant="destructive" className="bg-red-50 border-red-200">
+                  <AlertDescription className="text-red-800 text-sm">
+                    {error}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  "Sign in"
+                )}
+              </Button>
+            </form>
+
+            {/* Sign Up Link */}
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600">
+                Don't have an account?{" "}
+                <Link
+                  to="/signup"
+                  className="text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  Sign up
+                </Link>
               </p>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="animate-fade-in" style={{ animationDelay: '0.3s' }}>
-            <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-indigo-100 overflow-hidden transform hover:shadow-3xl transition-all duration-500">
-              <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 px-8 py-8">
-                <div className="flex items-center justify-center space-x-3 mb-2">
-                  <Sparkles className="w-6 h-6 text-yellow-300" />
-                  <h3 className="text-white text-2xl font-bold text-center">
-                    Administrative Login
-                  </h3>
-                  <Sparkles className="w-6 h-6 text-yellow-300" />
-                </div>
-                <p className="text-indigo-100 text-center text-sm">
-                  Access your tenant administration dashboard
-                </p>
-              </div>
-              <div className="px-8 py-4 bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-indigo-100">
-                <p className="text-xs text-gray-600 text-center font-medium">
-                  Manage your organization, configure settings, and oversee all operations with full administrative privileges.
-                </p>
-              </div>
-              <div className="p-8 lg:p-12">
-                <div className="max-w-md mx-auto space-y-8">
-                  {/* Admin Info */}
-                  <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-2xl border border-indigo-100">
-                    <div className="flex items-center space-x-3 mb-4">
-                      <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center">
-                        <Shield className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-gray-800">Tenant Administrator</h4>
-                        <p className="text-sm text-gray-600">Full system access & control</p>
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-700 leading-relaxed">
-                      As a tenant administrator, you'll have complete access to manage users, configure system settings,
-                      oversee operations, and maintain your organization's HotKup instance.
-                    </p>
-                  </div>
-
-                  {/* Login Form */}
-                  <div className="space-y-6">
-                    <div className="space-y-3 group">
-                      <Label htmlFor="email" className="flex items-center text-sm font-semibold text-gray-700 group-hover:text-indigo-600 transition-colors duration-300">
-                        <Mail className="w-4 h-4 mr-2 text-indigo-500" />
-                        Email Address <span className="text-red-500 ml-1">*</span>
-                      </Label>
-                      <div className="relative">
-                        <Input
-                          id="email"
-                          type="email"
-                          placeholder="admin@yourcompany.com"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          className={`${inputClasses} pl-12 transition-all duration-300 group-hover:border-indigo-400 group-focus-within:ring-indigo-200 h-12`}
-                          required
-                          autoComplete="email"
-                        />
-                        <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-hover:text-indigo-500 transition-colors duration-300" />
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        Your organization will be detected from your email domain
-                      </p>
-                    </div>
-
-                    <div className="space-y-3 group">
-                      <Label htmlFor="password" className="flex items-center text-sm font-semibold text-gray-700 group-hover:text-indigo-600 transition-colors duration-300">
-                        <Lock className="w-4 h-4 mr-2 text-indigo-500" />
-                        Password <span className="text-red-500 ml-1">*</span>
-                      </Label>
-                      <div className="relative">
-                        <Input
-                          id="password"
-                          type={showPassword ? "text" : "password"}
-                          placeholder="Enter your admin password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          className={`${inputClasses} pl-12 pr-12 transition-all duration-300 group-hover:border-indigo-400 group-focus-within:ring-indigo-200 h-12`}
-                          required
-                          autoComplete="current-password"
-                        />
-                        <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-hover:text-indigo-500 transition-colors duration-300" />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent text-gray-400 hover:text-gray-600"
-                          onClick={() => setShowPassword(!showPassword)}
-                          title={showPassword ? "Hide password" : "Show password"}
-                        >
-                          {showPassword ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        Password is always masked for security
-                      </p>
-                    </div>
-
-                    <Button
-                      type="submit"
-                      disabled={isLoading}
-                      className={`w-full h-14 text-lg font-bold transition-all duration-500 transform hover:scale-105 rounded-xl shadow-xl ${
-                        !isLoading
-                          ? "bg-gradient-to-r from-[#006AFF] to-[#0052CC] hover:from-[#0052CC] hover:to-[#004080] shadow-[#006AFF]/50 hover:shadow-2xl"
-                          : "bg-gray-400 cursor-not-allowed"
-                      }`}
-                    >
-                      {isLoading ? (
-                        <>
-                          <AILoadingSpinner size="sm" className="mr-3" />
-                          Signing in as Admin...
-                        </>
-                      ) : (
-                        <>
-                          <Shield className="w-5 h-5 mr-3" />
-                          Access Admin Dashboard
-                        </>
-                      )}
-                    </Button>
-                  </div>
-
-                  {/* Error Display */}
-                  {error && (
-                    <Alert variant="destructive" className="bg-red-50 border-red-200">
-                      <AlertDescription className="text-red-800 text-sm">{error}</AlertDescription>
-                    </Alert>
-                  )}
-
-                  {/* Footer Links */}
-                  <div className="text-center space-y-3 pt-6 border-t border-gray-200">
-                    <p className="text-sm text-gray-600">
-                      Need to create a new tenant?{" "}
-                      <Button
-                        type="button"
-                        variant="link"
-                        className="text-indigo-600 hover:text-indigo-800 p-0 text-sm font-semibold transition-colors duration-300"
-                        onClick={() => navigate("/signup")}
-                      >
-                        Create Tenant Account
-                      </Button>
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Are you a team member?{" "}
-                      <Button
-                        type="button"
-                        variant="link"
-                        className="text-indigo-600 hover:text-indigo-800 p-0 text-sm font-semibold transition-colors duration-300"
-                        onClick={() => navigate("/member/login")}
-                      >
-                        Member Login
-                      </Button>
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Forgot your admin password?{" "}
-                      <Button
-                        type="button"
-                        variant="link"
-                        className="text-indigo-600 hover:text-indigo-800 p-0 text-sm font-semibold transition-colors duration-300"
-                        onClick={() => navigate("/forgot-password")}
-                      >
-                        Reset Password
-                      </Button>
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </form>
+          {/* Footer */}
+          <div className="mt-6 text-center">
+            <p className="text-xs text-gray-500">
+              By signing in, you agree to our{" "}
+              <a href="#" className="text-blue-600 hover:text-blue-700">
+                Terms of Service
+              </a>{" "}
+              and{" "}
+              <a href="#" className="text-blue-600 hover:text-blue-700">
+                Privacy Policy
+              </a>
+            </p>
+          </div>
         </div>
       </div>
-
-      <style dangerouslySetInnerHTML={{__html: `
-        @keyframes blob {
-          0% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(30px, -50px) scale(1.1); }
-          66% { transform: translate(-20px, 20px) scale(0.9); }
-          100% { transform: translate(0px, 0px) scale(1); }
-        }
-        .animate-blob {
-          animation: blob 7s infinite;
-        }
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-        .animation-delay-4000 {
-          animation-delay: 4s;
-        }
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in {
-          animation: fade-in 0.6s ease-out forwards;
-        }
-      `}} />
     </div>
   );
 }
-
-export default memo(TenantLoginForm);
